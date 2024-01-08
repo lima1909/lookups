@@ -13,6 +13,10 @@ categories = ["data-structures", "caching"]
 
 
 [dependencies]
+hashbrown = { version = "0.14", optional = true }
+
+[features]
+hashbrown = [ "dep:hashbrown" ]
 
 [dev-dependencies]
 rstest = "0.18"

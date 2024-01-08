@@ -1,3 +1,30 @@
+/// Store is an container which the mapping between the `Key`s and they `Position`s stored.
+///
+pub trait Store {
+    type Key;
+    type Pos;
+
+    /// Insert an `Key` with the associated `Position`s.
+    ///
+    fn insert(&mut self, key: Self::Key, pos: Self::Pos);
+
+    /// Update means: `Key` changed, but `Position` stays the same.
+    ///
+    fn update(&mut self, old_key: Self::Key, pos: Self::Pos, new_key: Self::Key) {
+        self.delete(old_key, &pos);
+        self.insert(new_key, pos);
+    }
+
+    /// Delete means: if an `Key` has more than one `Position`, then remove only the given `Position`:
+    /// If the `Key` not exist, then is `delete`ignored:
+    ///
+    fn delete(&mut self, key: Self::Key, pos: &Self::Pos);
+
+    /// To reduce memory allocations can create an `Store` with capacity.
+    ///
+    fn with_capacity(capacity: usize) -> Self;
+}
+
 /// Lookup for `Key`s. This a base Trait for more retrieval implementations.
 /// Returns the positions for the searching `Key`, which the `Store` contains.
 ///
