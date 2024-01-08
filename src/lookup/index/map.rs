@@ -7,22 +7,16 @@ use hashbrown::HashMap;
 #[cfg(not(feature = "hashbrown"))]
 use std::collections::HashMap;
 
+/// Implementation for a `MapIndex` with unique `Position`.
 pub type UniqueMapIndex<K = String, X = usize> = MapIndex<UniqueKeyPositon<X>, K, X>;
+/// Implementation for a `MapIndex` with multi `Position`s.
 pub type MultiMapIndex<K = String, X = usize> = MapIndex<MultiKeyPositon<X>, K, X>;
 
 /// MapIndex is an implementation for an hash index.
+///
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct MapIndex<P: KeyPosition<X>, K = String, X = usize>(HashMap<K, P>, PhantomData<X>);
-
-impl<P, K, X> Default for MapIndex<P, K, X>
-where
-    P: KeyPosition<X>,
-{
-    fn default() -> Self {
-        Self(Default::default(), PhantomData)
-    }
-}
 
 impl<P, K, X, Q> Lookup<&Q> for MapIndex<P, K, X>
 where
