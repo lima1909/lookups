@@ -2,7 +2,14 @@
 name = "lookups"
 version = "0.1.0"
 edition = "2021"
+authors = ["Mario Linke"]
+description = "Improve the data retrieval operations for collections."
+license = "MIT"
+documentation = "https://docs.rs/lookups/"
+repository = "https://github.com/lima1909/lookups"
+keywords = ["filter", "query", "index", "search", "collection"]
+categories = ["data-structures", "caching"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 
 [dependencies]
