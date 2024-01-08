@@ -8,8 +8,8 @@ alias l := clippy
 set export
 
 # cargo get: https://crates.io/crates/cargo-get
-version := `cargo get --entry="./Cargo.toml" package.version --pretty`
-version_msg := "New release with version: " + version
+env_version := `cargo get --entry="./Cargo.toml" package.version --pretty`
+env_version_msg := "New release with version: " + env_version
 
 
 # run all tests with all-features
@@ -34,9 +34,10 @@ readme:
   cargo readme -o ./README.md 
 
 echo_version:
-  @echo "Version: " $version
+  @echo "Version: " $env_version
 
 release_new_version:
-  @git tag -a $version -m $version_msg
-  @git push origin --tags
-#  cargo publish -v
+  @echo "$env_version_msg"
+  git tag -a "$env_version" -m "$env_version_msg"
+  git push origin --tags
+  cargo publish -v
