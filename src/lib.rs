@@ -15,5 +15,10 @@
 //! ## Disadvantage
 //!
 //! It is more memory required. In addition to the user data, data for the _hash_, _index_ are also stored.
-
-mod lookup;
+//!
+//! ## How can I use it?
+//!
+//!```ignore
+//! ...
+//!
+//!```

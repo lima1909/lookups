@@ -27,3 +27,10 @@ The fast access can be achieved by using different methods, like;
 ### Disadvantage
 
 It is more memory required. In addition to the user data, data for the _hash_, _index_ are also stored.
+
+### How can I use it?
+
+```rust
+...
+
+```
