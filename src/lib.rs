@@ -22,4 +22,4 @@
 //! ...
 //!
 //!```
-mod lookup;
+pub mod lookup;

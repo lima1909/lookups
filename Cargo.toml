@@ -13,3 +13,6 @@ categories = ["data-structures", "caching"]
 
 
 [dependencies]
+
+[dev-dependencies]
+rstest = "0.18"
