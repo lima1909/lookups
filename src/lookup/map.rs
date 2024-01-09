@@ -1,4 +1,5 @@
-use crate::lookup::{KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon};
+//! The `map` is a lookup implementation for using hashing with a [`std::collections::HashMap`] or [hashbrown::HashMap](https://crates.io/crates/hashbrown) (feature = "hashbrown").
+use crate::lookup::store::{KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon};
 use std::{borrow::Borrow, hash::Hash, marker::PhantomData};
 
 #[cfg(feature = "hashbrown")]
@@ -7,18 +8,18 @@ use hashbrown::HashMap;
 #[cfg(not(feature = "hashbrown"))]
 use std::collections::HashMap;
 
-/// Implementation for a `MapIndex` with unique `Position`.
-pub type UniqueMapIndex<K = String, X = usize> = MapIndex<UniqueKeyPositon<X>, K, X>;
-/// Implementation for a `MapIndex` with multi `Position`s.
-pub type MultiMapIndex<K = String, X = usize> = MapIndex<MultiKeyPositon<X>, K, X>;
+/// Implementation for a `MapLookup` with unique `Position`.
+pub type UniqueMapLookup<K = String, X = usize> = MapLookup<UniqueKeyPositon<X>, K, X>;
+/// Implementation for a `MapLookup` with multi `Position`s.
+pub type MultiMapLookup<K = String, X = usize> = MapLookup<MultiKeyPositon<X>, K, X>;
 
 /// MapIndex is an implementation for an hash index.
 ///
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct MapIndex<P: KeyPosition<X>, K = String, X = usize>(HashMap<K, P>, PhantomData<X>);
+pub struct MapLookup<P: KeyPosition<X>, K = String, X = usize>(HashMap<K, P>, PhantomData<X>);
 
-impl<P, K, X, Q> Lookup<&Q> for MapIndex<P, K, X>
+impl<P, K, X, Q> Lookup<&Q> for MapLookup<P, K, X>
 where
     K: Borrow<Q> + Hash + Eq,
     Q: Hash + Eq + ?Sized,
@@ -38,7 +39,7 @@ where
     }
 }
 
-impl<P, K, X> Store for MapIndex<P, K, X>
+impl<P, K, X> Store for MapLookup<P, K, X>
 where
     K: Hash + Eq,
     P: KeyPosition<X>,
@@ -64,7 +65,7 @@ where
     }
 
     fn with_capacity(capacity: usize) -> Self {
-        MapIndex(HashMap::with_capacity(capacity), PhantomData)
+        MapLookup(HashMap::with_capacity(capacity), PhantomData)
     }
 }
 
@@ -74,7 +75,7 @@ mod tests {
 
     #[test]
     fn filter() {
-        let mut idx = UniqueMapIndex::with_capacity(5);
+        let mut idx = UniqueMapLookup::with_capacity(5);
         idx.insert(String::from("a"), 0);
         idx.insert(String::from("b"), 1);
         idx.insert(String::from("c"), 2);

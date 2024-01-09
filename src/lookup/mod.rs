@@ -1,6 +1,6 @@
-pub mod index;
-pub mod position;
+//! The `lokkup` module contains the structure for storing and accessing the lookup implementations.
+//!
+pub mod map;
 pub mod store;
 
-pub use position::{KeyPosition, MultiKeyPositon, UniqueKeyPositon};
-pub use store::{Lookup, Store};
+pub use map::{MultiMapLookup, UniqueMapLookup};

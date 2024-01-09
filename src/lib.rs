@@ -22,4 +22,5 @@
 //! ...
 //!
 //!```
+pub mod collections;
 pub mod lookup;
