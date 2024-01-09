@@ -74,7 +74,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn filter() {
+    fn store_and_lookup() {
         let mut idx = UniqueMapLookup::with_capacity(5);
         idx.insert(String::from("a"), 0);
         idx.insert(String::from("b"), 1);
