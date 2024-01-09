@@ -1,5 +1,6 @@
 //! The `store` module contains the interfaces for storing and accessing the lookups.
 //!
+pub mod item;
 pub mod position;
 
 pub use position::{KeyPosition, MultiKeyPositon, UniqueKeyPositon};
