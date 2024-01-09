@@ -1,8 +1,5 @@
-//! __lookups__ is a crate for extending already existing collection (Vec, Slice, Map, ...) by additional and performant lookup functionalities.
-//!
-//! This means faster than an `iterator` or a `search algorithm`.
-//!
-//! This crate provides wrapper for the Rust collections, which extends the given collection with fast retrieval operations.
+//! __lookups__ is a crate for extending already existing collection (Vec, Slice, Map, ...)
+//! with additional lookup functionalities, so you have a faster access to your data as with an `iterator` or a `search algorithm`.
 //! This wrapper is just as easy to use as the given (original) collection.
 //!
 //! The fast access can be achieved by using different methods, like;
@@ -14,7 +11,8 @@
 //!
 //! ## Disadvantage
 //!
-//! It is more memory required. In addition to the user data, data for the _hash_, _index_ are also stored.
+//! - it is more memory required. In addition to the user data, data for the _hash_, _index_ are also stored.
+//! - the write operation are slower, because for every wirte operation is a another on (for storing the lookup data) necessary
 //!
 //! ## How can I use it?
 //!

@@ -1,3 +1,7 @@
+//! A lookup has a `Key` (for what you are looking for) and
+//! get the `Position`s (Index in a Vec for example) where the `Key` is stored.
+//!
+
 /// `KeyPosition` has two expressions:
 /// - `unique`: for a given `Key` exist none or one `Position`
 /// - `multi`:  for a given `Key` exist none or many `Position`
