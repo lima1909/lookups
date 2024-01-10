@@ -68,6 +68,11 @@ mod tests {
             vec![&Car(99, "Audi".into())],
             l.get_by_key(99).collect::<Vec<_>>()
         );
+
+        assert_eq!(
+            vec![&Car(0, "BMW".into()), &Car(99, "Audi".into())],
+            l.get_by_many_keys([0, 99]).collect::<Vec<_>>()
+        );
     }
 
     #[test]
@@ -82,6 +87,11 @@ mod tests {
         assert_eq!(
             vec![&Car(0, "BMW".into())],
             l.get_by_key("BMW").collect::<Vec<_>>()
+        );
+
+        assert_eq!(
+            vec![&Car(99, "Audi".into()), &Car(0, "BMW".into())],
+            l.get_by_many_keys(["Audi", "BMW"]).collect::<Vec<_>>()
         );
     }
 }

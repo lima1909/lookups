@@ -1,7 +1,7 @@
 //! The `collections` module contains the collections implementations which are using the lookups.
 //!
 
-use crate::lookup::store::{item::ItemAt, Lookup};
+use crate::lookup::store::{item::Itemer, Lookup};
 use std::marker::PhantomData;
 
 pub mod ro;
@@ -71,11 +71,45 @@ where
     /// ```
     pub fn get_by_key(&self, key: Q) -> impl Iterator<Item = &I::Output>
     where
-        I: ItemAt<L::Pos>,
+        I: Itemer<L::Pos>,
     {
-        self.lookup
-            .pos_by_key(key)
-            .iter()
-            .map(|pos| self.items.item(pos))
+        self.items.items(self.lookup.pos_by_key(key).iter())
+    }
+
+    /// Combines all given `keys` with an logical `OR`.
+    ///
+    ///```text
+    /// get_by_many_keys([2, 5, 6]) => get_by_key(2) OR get_by_key(5) OR get_by_key(6)
+    /// get_by_many_keys(2..6]) => get_by_key(2) OR get_by_key(3) OR get_by_key(4) OR get_by_key(5)
+    /// ```
+    ///
+    /// # Example:
+    ///
+    /// ```
+    /// use lookups::lookup::MultiUIntLookup;
+    /// use lookups::collections::ro::LVec;
+    ///
+    /// #[derive(Debug, PartialEq)]
+    /// pub struct Car(usize, String);
+    ///
+    /// impl Car {
+    ///     fn id(&self) -> usize { self.0 }
+    /// }
+    ///
+    /// let cars = vec![Car(5, "BMW".into()), Car(1, "Audi".into())];
+    ///
+    /// let v = LVec::<MultiUIntLookup, _>::new(Car::id, cars);
+    ///
+    /// assert_eq!(
+    ///     vec![&Car(5, "BMW".into()), &Car(1, "Audi".into())],
+    ///     v.idx().get_by_many_keys([5, 1]).collect::<Vec<_>>()
+    /// );
+    /// ```
+    pub fn get_by_many_keys<It>(&self, keys: It) -> impl Iterator<Item = &I::Output>
+    where
+        I: Itemer<L::Pos>,
+        It: IntoIterator<Item = Q> + 'a,
+    {
+        self.items.items(self.lookup.pos_by_many_keys(keys))
     }
 }
