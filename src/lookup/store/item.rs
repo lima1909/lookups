@@ -24,13 +24,7 @@ impl<T> ItemAt<usize> for &[T] {
     }
 }
 
-#[cfg(feature = "hashbrown")]
-use hashbrown::HashMap;
-
-#[cfg(not(feature = "hashbrown"))]
-use std::collections::HashMap;
-
-impl<Q, K, T> ItemAt<Q> for HashMap<K, T>
+impl<Q, K, T> ItemAt<Q> for crate::HashMap<K, T>
 where
     K: Borrow<Q> + Hash + Eq,
     Q: Hash + Eq,

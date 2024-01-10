@@ -1,12 +1,9 @@
 //! The `map` is a lookup implementation for using hashing with a [`std::collections::HashMap`] or [hashbrown::HashMap](https://crates.io/crates/hashbrown) (feature = "hashbrown").
-use crate::lookup::store::{KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon};
+use crate::{
+    lookup::store::{KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon},
+    HashMap,
+};
 use std::{borrow::Borrow, hash::Hash, marker::PhantomData};
-
-#[cfg(feature = "hashbrown")]
-use hashbrown::HashMap;
-
-#[cfg(not(feature = "hashbrown"))]
-use std::collections::HashMap;
 
 /// Implementation for a `MapLookup` with unique `Position`.
 pub type UniqueMapLookup<K = String, X = usize> = MapLookup<UniqueKeyPositon<X>, K, X>;

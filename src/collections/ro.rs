@@ -1,5 +1,5 @@
 use super::Retriever;
-use crate::lookup::store::{Lookup, Store};
+use crate::lookup::store::{new_store_from_slice, Lookup, Store};
 use std::ops::Deref;
 
 /// `LVec` is a read only lookup extenstion for a [`std::vec::Vec`].
@@ -14,12 +14,10 @@ impl<S, I> LVec<S, I> {
         F: Fn(&I) -> S::Key,
         S: Store<Pos = usize>,
     {
-        let mut store = S::with_capacity(items.len());
-        items.iter().enumerate().for_each(|(pos, item)| {
-            store.insert(field(item), pos);
-        });
-
-        Self { store, items }
+        Self {
+            store: new_store_from_slice(field, &items),
+            items,
+        }
     }
 
     pub fn idx<Q>(&self) -> Retriever<'_, S, &[I], Q>

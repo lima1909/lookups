@@ -22,3 +22,9 @@
 //!```
 pub mod collections;
 pub mod lookup;
+
+#[cfg(feature = "hashbrown")]
+type HashMap<K, V> = hashbrown::HashMap<K, V>;
+
+#[cfg(not(feature = "hashbrown"))]
+type HashMap<K, V> = std::collections::HashMap<K, V>;

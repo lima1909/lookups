@@ -109,6 +109,32 @@ where
     }
 }
 
+pub fn new_store_from_slice<S, F, I>(field: F, items: &[I]) -> S
+where
+    F: Fn(&I) -> S::Key,
+    S: Store<Pos = usize>,
+{
+    let mut store = S::with_capacity(items.len());
+    items.iter().enumerate().for_each(|(pos, item)| {
+        store.insert(field(item), pos);
+    });
+
+    store
+}
+
+pub fn new_store_from_hashmap<S, F, I>(field: F, items: crate::HashMap<S::Pos, I>) -> S
+where
+    F: Fn(&I) -> S::Key,
+    S: Store<Pos = usize>,
+{
+    let mut store = S::with_capacity(items.len());
+    items.iter().for_each(|(pos, item)| {
+        store.insert(field(item), *pos);
+    });
+
+    store
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
