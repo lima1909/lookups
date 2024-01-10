@@ -1,20 +1,18 @@
+use super::Retriever;
 use crate::lookup::store::{Lookup, Store};
 use std::ops::Deref;
 
-/// Is a read only lookup extenstion for a [`std::vec::Vec`].
-pub struct LVec<S, T> {
+/// `LVec` is a read only lookup extenstion for a [`std::vec::Vec`].
+pub struct LVec<S, I> {
     store: S,
-    items: Vec<T>,
+    items: Vec<I>,
 }
 
-impl<S, T> LVec<S, T>
-where
-    S: Store<Pos = usize>,
-{
-    pub fn new<F, K>(field: F, items: Vec<T>) -> Self
+impl<S, I> LVec<S, I> {
+    pub fn new<F>(field: F, items: Vec<I>) -> Self
     where
-        F: Fn(&T) -> K,
-        S: Store<Key = K, Pos = usize>,
+        F: Fn(&I) -> S::Key,
+        S: Store<Pos = usize>,
     {
         let mut store = S::with_capacity(items.len());
         items.iter().enumerate().for_each(|(pos, item)| {
@@ -24,12 +22,11 @@ where
         Self { store, items }
     }
 
-    pub fn find<Q>(&self, key: Q) -> impl Iterator<Item = &T>
+    pub fn idx<Q>(&self) -> Retriever<'_, S, &[I], Q>
     where
         S: Lookup<Q, Pos = usize>,
     {
-        let pos = self.store.pos_by_key(key);
-        pos.iter().map(|idx| &self.items[*idx])
+        Retriever::new(&self.store, &self.items)
     }
 }
 
@@ -62,20 +59,31 @@ mod tests {
 
     #[test]
     fn lvec_usize() {
-        let items = vec![Car(0, "BMW".into())];
+        let items = vec![Car(99, "Audi".into()), Car(0, "BMW".into())];
         let v = LVec::<UniqueUIntLookup, _>::new(Car::id, items);
 
-        assert_eq!(vec![&Car(0, "BMW".into())], v.find(0).collect::<Vec<_>>());
+        let l = v.idx();
+        assert!(l.contains_key(99));
+        assert!(!l.contains_key(1_000));
+
+        assert_eq!(
+            vec![&Car(99, "Audi".into())],
+            l.get_by_key(99).collect::<Vec<_>>()
+        );
     }
 
     #[test]
     fn lvec_string() {
-        let items = vec![Car(0, "BMW".into())];
+        let items = vec![Car(99, "Audi".into()), Car(0, "BMW".into())];
         let v = LVec::<UniqueMapLookup, _>::new(Car::name, items);
+
+        let l = v.idx();
+        assert!(l.contains_key("Audi"));
+        assert!(!l.contains_key("VW"));
 
         assert_eq!(
             vec![&Car(0, "BMW".into())],
-            v.find("BMW").collect::<Vec<_>>()
+            l.get_by_key("BMW").collect::<Vec<_>>()
         );
     }
 }

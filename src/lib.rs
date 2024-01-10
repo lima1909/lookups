@@ -1,4 +1,4 @@
-//! __lookups__ is a crate for extending already existing collection (Vec, Slice, Map, ...)
+//! __lookups__ is a crate for extending already existing collections (`std::vec::Vec`, `std::collections::HashMap`, ...)
 //! with additional lookup functionalities, so you have a faster access to your data as with an `iterator` or a `search algorithm`.
 //! This wrapper is just as easy to use as the given (original) collection.
 //!
