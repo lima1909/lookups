@@ -4,9 +4,8 @@
 //!
 //! The fast access can be achieved by using different methods, like;
 //!
-//! - hashing
+//! - hash tables
 //! - indexing
-//! - search trees
 //! - ...
 //!
 //! ## Disadvantage

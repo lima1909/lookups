@@ -67,7 +67,7 @@ pub trait Lookup<Q> {
 pub struct Positions<'a, L: Lookup<Q>, Q, Keys> {
     lookup: &'a L,
     keys: Keys,
-    iter: std::slice::Iter<'a, L::Pos>,
+    pos_iter: std::slice::Iter<'a, L::Pos>,
 }
 
 impl<'a, L, Q, Keys> Positions<'a, L, Q, Keys>
@@ -76,12 +76,16 @@ where
     Keys: Iterator<Item = Q> + 'a,
 {
     pub(crate) fn new(lookup: &'a L, mut keys: Keys) -> Self {
-        let iter = match keys.next() {
+        let pos_iter = match keys.next() {
             Some(k) => lookup.pos_by_key(k).iter(),
             None => [].iter(),
         };
 
-        Self { lookup, keys, iter }
+        Self {
+            lookup,
+            keys,
+            pos_iter,
+        }
     }
 }
 
@@ -94,45 +98,45 @@ where
     type Item = &'a L::Pos;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(idx) = self.iter.next() {
+        if let Some(idx) = self.pos_iter.next() {
             return Some(idx);
         }
 
         loop {
-            let key = self.keys.next()?;
-            let idx = self.lookup.pos_by_key(key);
-            if !idx.is_empty() {
-                self.iter = idx.iter();
-                return self.iter.next();
+            let next_key = self.keys.next()?;
+            let next_pos = self.lookup.pos_by_key(next_key);
+            if !next_pos.is_empty() {
+                self.pos_iter = next_pos.iter();
+                return self.pos_iter.next();
             }
         }
     }
 }
 
-pub fn new_store_from_slice<S, F, I>(field: F, items: &[I]) -> S
-where
-    F: Fn(&I) -> S::Key,
-    S: Store<Pos = usize>,
-{
-    let mut store = S::with_capacity(items.len());
-    items.iter().enumerate().for_each(|(pos, item)| {
-        store.insert(field(item), pos);
-    });
-
-    store
+pub(crate) trait ToStore<'a, Item, Pos> {
+    fn to_store<S, F>(self, field: F) -> S
+    where
+        S: Store<Pos = Pos>,
+        F: Fn(&Item) -> S::Key;
 }
 
-pub fn new_store_from_hashmap<S, F, I>(field: F, items: crate::HashMap<S::Pos, I>) -> S
+impl<'a, It, I: 'a, Pos> ToStore<'a, I, Pos> for It
 where
-    F: Fn(&I) -> S::Key,
-    S: Store<Pos = usize>,
+    It: Iterator<Item = (Pos, &'a I)> + ExactSizeIterator,
 {
-    let mut store = S::with_capacity(items.len());
-    items.iter().for_each(|(pos, item)| {
-        store.insert(field(item), *pos);
-    });
+    fn to_store<S, F>(self, field: F) -> S
+    where
+        S: Store<Pos = Pos>,
+        F: Fn(&I) -> S::Key,
+    {
+        let mut store = S::with_capacity(self.len());
 
-    store
+        self.for_each(|(pos, item)| {
+            store.insert(field(item), pos);
+        });
+
+        store
+    }
 }
 
 #[cfg(test)]
