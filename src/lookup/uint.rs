@@ -1,6 +1,8 @@
 //! The `uint` is a lookup which are using the index position (the `Key`) in a `Vec` find all `Position`s.
 //!
-use crate::lookup::store::{KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon};
+use crate::lookup::store::{
+    KeyPosition, Lookup, LookupExt, MultiKeyPositon, Store, UniqueKeyPositon,
+};
 use std::marker::PhantomData;
 
 /// Implementation for a `UIntLookup` with unique `Position`.
@@ -11,7 +13,7 @@ pub type MultiUIntLookup<K = usize, X = usize> = UIntLookup<MultiKeyPositon<X>, 
 /// `Key` is from type [`usize`] and the information are saved in a List (Store).
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct UIntLookup<P: KeyPosition<X>, K = usize, X = usize> {
+pub struct UIntLookup<P, K = usize, X = usize> {
     inner: Vec<P>,
     _key: PhantomData<K>,
     _pos: PhantomData<X>,
@@ -70,6 +72,22 @@ where
             _key: PhantomData,
             _pos: PhantomData,
         }
+    }
+}
+
+impl<P, K, X> LookupExt for UIntLookup<P, K, X> {
+    type Extension<'a> = UIntLookupExt<'a, P, K, X> where P:'a, K:'a, X: 'a;
+
+    fn lookup_ext(&self) -> Self::Extension<'_> {
+        UIntLookupExt(self)
+    }
+}
+
+pub struct UIntLookupExt<'a, P, K = usize, X = usize>(&'a UIntLookup<P, K, X>);
+
+impl<'a, P, K, X> UIntLookupExt<'a, P, K, X> {
+    pub fn foo(&self) -> bool {
+        true
     }
 }
 

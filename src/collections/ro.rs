@@ -1,5 +1,5 @@
 use super::Retriever;
-use crate::lookup::store::{Lookup, Store};
+use crate::lookup::store::{Lookup, LookupExt, Store};
 use std::ops::Deref;
 
 /// `LVec` is a read only lookup extenstion for a [`std::vec::Vec`].
@@ -30,6 +30,13 @@ impl<S, I> LVec<S, I> {
         S: Lookup<Q, Pos = usize>,
     {
         Retriever::new(&self.store, &self.items)
+    }
+
+    pub fn idx_ext(&self) -> S::Extension<'_>
+    where
+        S: LookupExt,
+    {
+        self.store.lookup_ext()
     }
 }
 
@@ -78,6 +85,8 @@ mod tests {
             vec![&Car(0, "BMW".into()), &Car(99, "Audi".into())],
             l.get_by_many_keys([0, 99]).collect::<Vec<_>>()
         );
+
+        assert!(v.idx_ext().foo());
     }
 
     #[test]

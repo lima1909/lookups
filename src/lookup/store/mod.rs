@@ -63,6 +63,17 @@ pub trait Lookup<Q> {
     }
 }
 
+/// `LookupExt` is a trait for extending [`Lookup`]s
+/// with specifica which are only supported by the concrete implementation.
+pub trait LookupExt {
+    type Extension<'a>
+    where
+        Self: 'a;
+
+    /// Returns the lookup extension for the `Lookup` implementation.
+    fn lookup_ext(&self) -> Self::Extension<'_>;
+}
+
 /// `Positions` is an `Iterator` for the result from [`Lookup::pos_by_many_keys()`].
 pub struct Positions<'a, L: Lookup<Q>, Q, Keys> {
     lookup: &'a L,
