@@ -23,6 +23,11 @@ where
     P: KeyPosition<X>,
 {
     type Pos = X;
+    type Extension<'a> = ()
+    where
+        Self: 'a;
+
+    fn extension(&self) -> Self::Extension<'_> {}
 
     fn key_exist(&self, key: &Q) -> bool {
         self.0.contains_key(key)

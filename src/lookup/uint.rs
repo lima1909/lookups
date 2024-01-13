@@ -1,8 +1,6 @@
 //! The `uint` is a lookup which are using the index position (the `Key`) in a `Vec` find all `Position`s.
 //!
-use crate::lookup::store::{
-    KeyPosition, Lookup, LookupExt, MultiKeyPositon, Store, UniqueKeyPositon,
-};
+use crate::lookup::store::{KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon};
 use std::marker::PhantomData;
 
 /// Implementation for a `UIntLookup` with unique `Position`.
@@ -25,6 +23,11 @@ where
     P: KeyPosition<X>,
 {
     type Pos = X;
+    type Extension<'a> = UIntLookupExt<'a, P, K, X> where P:'a, K:'a, X: 'a;
+
+    fn extension(&self) -> Self::Extension<'_> {
+        UIntLookupExt(self)
+    }
 
     fn pos_by_key(&self, key: K) -> &[Self::Pos] {
         match self.inner.get(key.into()) {
@@ -72,14 +75,6 @@ where
             _key: PhantomData,
             _pos: PhantomData,
         }
-    }
-}
-
-impl<P, K, X> LookupExt for UIntLookup<P, K, X> {
-    type Extension<'a> = UIntLookupExt<'a, P, K, X> where P:'a, K:'a, X: 'a;
-
-    fn lookup_ext(&self) -> Self::Extension<'_> {
-        UIntLookupExt(self)
     }
 }
 

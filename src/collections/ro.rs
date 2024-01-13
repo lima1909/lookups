@@ -1,5 +1,5 @@
 use super::Retriever;
-use crate::lookup::store::{Lookup, LookupExt, Store};
+use crate::lookup::store::{Lookup, Store};
 use std::ops::Deref;
 
 /// `LVec` is a read only lookup extenstion for a [`std::vec::Vec`].
@@ -25,18 +25,11 @@ impl<S, I> LVec<S, I> {
         }
     }
 
-    pub fn idx<Q>(&self) -> Retriever<'_, S, &[I], Q>
+    pub fn lookup<Q>(&self) -> Retriever<'_, S, &[I], Q>
     where
         S: Lookup<Q, Pos = usize>,
     {
         Retriever::new(&self.store, &self.items)
-    }
-
-    pub fn idx_ext(&self) -> S::Extension<'_>
-    where
-        S: LookupExt,
-    {
-        self.store.lookup_ext()
     }
 }
 
@@ -72,7 +65,7 @@ mod tests {
         let items = vec![Car(99, "Audi".into()), Car(0, "BMW".into())];
         let v = LVec::<UniqueUIntLookup, _>::new(Car::id, items);
 
-        let l = v.idx();
+        let l = v.lookup();
         assert!(l.contains_key(99));
         assert!(!l.contains_key(1_000));
 
@@ -86,7 +79,7 @@ mod tests {
             l.get_by_many_keys([0, 99]).collect::<Vec<_>>()
         );
 
-        assert!(v.idx_ext().foo());
+        assert!(l.foo());
     }
 
     #[test]
@@ -94,7 +87,7 @@ mod tests {
         let items = vec![Car(99, "Audi".into()), Car(0, "BMW".into())];
         let v = LVec::<UniqueMapLookup, _>::new(Car::name, items);
 
-        let l = v.idx();
+        let l = v.lookup();
         assert!(l.contains_key("Audi"));
         assert!(!l.contains_key("VW"));
 
