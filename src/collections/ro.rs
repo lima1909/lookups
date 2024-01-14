@@ -110,5 +110,9 @@ mod tests {
             vec![&Car(99, "Audi".into()), &Car(0, "BMW".into())],
             l.get_by_many_keys(["Audi", "BMW"]).collect::<Vec<_>>()
         );
+
+        let keys = l.keys().collect::<std::collections::HashSet<_>>();
+        assert!(keys.contains(&String::from("Audi")));
+        assert!(keys.contains(&String::from("BMW")));
     }
 }
