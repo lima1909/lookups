@@ -1,5 +1,9 @@
 //! The `uint` is a lookup which are using the index position (the `Key`) in a `Vec` find all `Position`s.
 //!
+//! ## Advantages:
+//! - the finding of an `Key` is very fast (you can __directly__ jump to the value (`Key`))
+//! - the `Key`s are sorted (so you get the possibility to use BitAnd and BitOr for a `Vec` for the `Key`)
+//!
 use crate::lookup::store::{KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon};
 use std::marker::PhantomData;
 

@@ -1,4 +1,8 @@
 //! The `map` is a lookup implementation for using hashing with a [`std::collections::HashMap`] or [hashbrown::HashMap](https://crates.io/crates/hashbrown) (feature = "hashbrown").
+//!
+//! ## Advantages:
+//! - all advantages, which has a hashing procedure
+//!
 use crate::{
     lookup::store::{KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon},
     HashMap,
