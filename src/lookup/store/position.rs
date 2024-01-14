@@ -11,6 +11,9 @@ pub trait KeyPosition<P> {
     fn none() -> Self;
     /// Create a new `KeyPosition` with the initial value `pos`.
     fn new(pos: P) -> Self;
+
+    /// Check whether it contains at least one position `P`.
+    fn is_empty(&self) -> bool;
     /// Add a new `pos`.
     fn add_pos(&mut self, pos: P);
     /// Remove a `pos`. If the return value is `true`, than the last position was removed.
@@ -40,6 +43,11 @@ where
     /// Create a new Position.
     fn new(pos: P) -> Self {
         Self(Some([pos]))
+    }
+
+    /// Check whether it contains at least one position `P`.
+    fn is_empty(&self) -> bool {
+        self.0.is_none()
     }
 
     /// ## Panics
@@ -95,6 +103,11 @@ where
         Self(vec![pos])
     }
 
+    /// Check whether it contains at least one position `P`.
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// Add new Positin to a sorted collection.
     /// Duplicate Positions are ignored.
     fn add_pos(&mut self, pos: P) {
@@ -131,18 +144,26 @@ mod tests {
         fn unique_none() {
             assert_eq!(UniqueKeyPositon::none().0, None::<[usize; 1]>);
             assert_eq!(UniqueKeyPositon::<usize>::none().as_slice(), &[]);
+
+            assert!(UniqueKeyPositon::<u8>::none().is_empty());
         }
 
         #[test]
         fn unique_new() {
             assert_eq!(UniqueKeyPositon::new(7), [7; 1].into());
             assert_eq!(UniqueKeyPositon::new(7).as_slice(), &[7]);
+
+            assert!(!UniqueKeyPositon::new(7).is_empty());
         }
 
         #[test]
         fn add_pos() {
             let mut pos = UniqueKeyPositon::none();
+            assert!(pos.is_empty());
+
             pos.add_pos(2);
+            assert!(!pos.is_empty());
+
             assert_eq!(pos, UniqueKeyPositon::new(2));
         }
 
@@ -178,6 +199,7 @@ mod tests {
 
             // the key is alway removed, also returns true for ever
             assert!(x.remove_pos(&2));
+            assert!(x.is_empty());
         }
     }
 
@@ -188,12 +210,16 @@ mod tests {
         fn multi_none() {
             assert_eq!(MultiKeyPositon::<usize>::none().0, Vec::new());
             assert_eq!(MultiKeyPositon::<usize>::none().as_slice(), &[]);
+
+            assert!(MultiKeyPositon::<usize>::none().is_empty());
         }
 
         #[test]
         fn multi_new() {
             assert_eq!(MultiKeyPositon::new(7), MultiKeyPositon(vec![7]));
             assert_eq!(MultiKeyPositon::new(7).as_slice(), &[7]);
+
+            assert!(!MultiKeyPositon::new(7).is_empty());
         }
 
         #[test]
@@ -250,6 +276,7 @@ mod tests {
 
             // remove after last
             assert!(m.remove_pos(&3));
+            assert!(m.is_empty());
         }
     }
 }
