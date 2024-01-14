@@ -1,9 +1,11 @@
 //! The `collections` module contains the collections implementations which are using the lookups.
 //!
 
-use crate::lookup::store::{item::Itemer, Lookup};
+use crate::collections::item::Itemer;
+use crate::lookup::store::Lookup;
 use std::{marker::PhantomData, ops::Deref};
 
+pub mod item;
 pub mod ro;
 
 /// A `Retriever` is the main interface for get Items by an given `Lookup`.
