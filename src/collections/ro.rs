@@ -66,20 +66,30 @@ mod tests {
         let v = LVec::<UniqueUIntLookup, _>::new(Car::id, items);
 
         let l = v.lookup();
+
+        assert!(l.contains_key(0));
         assert!(l.contains_key(99));
         assert!(!l.contains_key(1_000));
 
         assert_eq!(
+            vec![&Car(0, "BMW".into())],
+            l.get_by_key(0).collect::<Vec<_>>()
+        );
+        assert_eq!(
             vec![&Car(99, "Audi".into())],
             l.get_by_key(99).collect::<Vec<_>>()
         );
+        assert!(l.get_by_key(98).next().is_none());
 
         assert_eq!(
             vec![&Car(0, "BMW".into()), &Car(99, "Audi".into())],
             l.get_by_many_keys([0, 99]).collect::<Vec<_>>()
         );
 
-        assert!(l.foo());
+        assert_eq!(0, l.min_key_index().unwrap());
+        assert_eq!(99, l.max_key_index().unwrap());
+
+        assert_eq!(vec![0, 99], l.key_indexes().collect::<Vec<_>>());
     }
 
     #[test]
