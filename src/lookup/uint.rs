@@ -16,8 +16,7 @@ pub type MultiUIntLookup<K = usize, X = usize> = UIntLookup<MultiKeyPositon<X>, 
 #[derive(Debug)]
 pub struct UIntLookup<P, K = usize, X = usize> {
     inner: Vec<Option<(K, P)>>,
-    min_idx: Option<usize>,
-    max_idx: Option<usize>,
+    max_idx: usize,
     _x: PhantomData<X>,
 }
 
@@ -65,16 +64,23 @@ where
             _ => self.inner[idx] = Some((key, P::new(pos))),
         }
 
-        self.insert_min_max(idx);
+        // define new max index
+        if self.max_idx < idx {
+            self.max_idx = idx
+        }
     }
 
     fn delete(&mut self, key: Self::Key, pos: &Self::Pos) {
-        let idx = key.clone().into();
+        let idx = key.into();
 
         if let Some(Some((_, rm_idx))) = self.inner.get_mut(idx) {
             if rm_idx.remove_pos(pos) {
                 self.inner[idx] = None;
-                self.delete_min_max(idx);
+
+                // define new max index
+                if self.max_idx == idx {
+                    self.max_idx = self.max_key().map(|key| key.into()).unwrap_or_default()
+                }
             }
         }
     }
@@ -82,8 +88,7 @@ where
     fn with_capacity(capacity: usize) -> Self {
         Self {
             inner: Vec::with_capacity(capacity),
-            min_idx: None,
-            max_idx: None,
+            max_idx: 0,
             _x: PhantomData,
         }
     }
@@ -93,40 +98,23 @@ where
 ///
 pub struct UIntLookupExt<'a, P, K = usize, X = usize>(&'a UIntLookup<P, K, X>);
 
-impl<'a, P, K, X> UIntLookupExt<'a, P, K, X> {
+impl<'a, P, K, X> UIntLookupExt<'a, P, K, X>
+where
+    K: Clone,
+{
     pub fn keys(&self) -> impl Iterator<Item = K> + '_
     where
-        K: Clone,
+        K: Into<usize>,
     {
         self.0.values().map(|(key, _)| key.clone())
     }
 
-    pub fn min_key(&self) -> Option<K>
-    where
-        K: Clone,
-    {
-        let idx = self.0.min_idx?;
-        let pair = self.0.inner[idx].as_ref()?;
-        let key = &pair.0;
-        Some(key.clone())
+    pub fn min_key(&self) -> Option<K> {
+        self.0.min_key()
     }
 
-    pub fn max_key(&self) -> Option<K>
-    where
-        K: Clone,
-    {
-        let idx = self.0.max_idx?;
-        let pair = self.0.inner[idx].as_ref()?;
-        let key = &pair.0;
-        Some(key.clone())
-    }
-
-    pub fn min_key_index(&self) -> Option<usize> {
-        self.0.min_idx
-    }
-
-    pub fn max_key_index(&self) -> Option<usize> {
-        self.0.max_idx
+    pub fn max_key(&self) -> Option<K> {
+        self.0.max_key()
     }
 }
 
@@ -173,61 +161,32 @@ where
 // ----------- internal (private) helper implementation --------------------------
 //
 impl<P, K, X> UIntLookup<P, K, X> {
+    #[inline(always)]
     fn values(&self) -> impl Iterator<Item = &(K, P)> {
-        let min = self.min_idx.unwrap_or_default();
-        let max = self.max_idx.unwrap_or_default();
-
-        self.inner[min..=max].iter().filter_map(|v| v.as_ref())
+        self.inner[..=self.max_idx]
+            .iter()
+            .filter_map(|v| v.as_ref())
     }
 
-    fn insert_min_max(&mut self, new_value: usize) {
-        match (self.min_idx, self.max_idx) {
-            (None, None) => {
-                self.min_idx = Some(new_value);
-                self.max_idx = Some(new_value);
-            }
-            (Some(min), Some(max)) => {
-                if new_value < min {
-                    self.min_idx = Some(new_value)
-                } else if new_value > max {
-                    self.max_idx = Some(new_value)
-                }
-            }
-            (None, Some(_)) => unreachable!("max, but no min value"),
-            (Some(_), None) => unreachable!("min, but no max value"),
-        }
+    #[inline(always)]
+    pub fn min_key(&self) -> Option<K>
+    where
+        K: Clone,
+    {
+        self.inner
+            .iter()
+            .find_map(|o| o.as_ref().map(|(k, _)| k.clone()))
     }
 
-    fn delete_min_max(&mut self, new_value: usize) {
-        match (self.min_idx, self.max_idx) {
-            (None, None) => {}
-            (Some(min), Some(max)) => {
-                if min == new_value || max == new_value {
-                    self.min_idx = self.find_min_idx();
-                    self.max_idx = self.find_max_idx();
-                }
-            }
-            (None, Some(_)) => unreachable!("max, but no min value"),
-            (Some(_), None) => unreachable!("min, but no max value"),
-        }
-    }
-
-    fn find_min_idx(&self) -> Option<usize> {
-        self.inner.iter().enumerate().find_map(|(pos, o)| {
-            if o.is_some() {
-                return Some(pos);
-            }
-            None
-        })
-    }
-
-    fn find_max_idx(&self) -> Option<usize> {
-        self.inner.iter().rev().enumerate().find_map(|(pos, o)| {
-            if o.is_some() {
-                return Some(self.inner.len() - pos - 1);
-            }
-            None
-        })
+    #[inline(always)]
+    fn max_key(&self) -> Option<K>
+    where
+        K: Clone,
+    {
+        self.inner
+            .iter()
+            .rev()
+            .find_map(|o| o.as_ref().map(|(k, _)| k.clone()))
     }
 }
 
@@ -243,28 +202,28 @@ mod tests {
             let mut idx = UniqueUIntLookup::<usize, usize>::with_capacity(5);
 
             // both not set
-            assert_eq!(None, idx.min_idx);
-            assert_eq!(None, idx.max_idx);
+            assert_eq!(None, idx.extension().min_key());
+            assert_eq!(None, idx.extension().max_key());
 
             // first insert, max and min are equal
             idx.insert(1, 1);
-            assert_eq!(Some(1), idx.min_idx);
-            assert_eq!(Some(1), idx.max_idx);
+            assert_eq!(Some(1), idx.extension().min_key());
+            assert_eq!(Some(1), idx.extension().max_key());
 
             // min and max are different
             idx.insert(4, 4);
-            assert_eq!(Some(1), idx.min_idx);
-            assert_eq!(Some(4), idx.max_idx);
+            assert_eq!(Some(1), idx.extension().min_key());
+            assert_eq!(Some(4), idx.extension().max_key());
 
             // new min
             idx.insert(0, 0);
-            assert_eq!(Some(0), idx.min_idx);
-            assert_eq!(Some(4), idx.max_idx);
+            assert_eq!(Some(0), idx.extension().min_key());
+            assert_eq!(Some(4), idx.extension().max_key());
 
             // new max
             idx.insert(6, 6);
-            assert_eq!(Some(0), idx.min_idx);
-            assert_eq!(Some(6), idx.max_idx);
+            assert_eq!(Some(0), idx.extension().min_key());
+            assert_eq!(Some(6), idx.extension().max_key());
         }
 
         #[test]
@@ -272,13 +231,13 @@ mod tests {
             let mut idx = MultiUIntLookup::<usize, usize>::with_capacity(5);
 
             // min/max not set
-            assert_eq!(None, idx.min_idx);
-            assert_eq!(None, idx.max_idx);
+            assert_eq!(None, idx.extension().min_key());
+            assert_eq!(None, idx.extension().max_key());
 
             // remove not exist key/pos pair
             idx.delete(1, &1);
-            assert_eq!(None, idx.min_idx);
-            assert_eq!(None, idx.max_idx);
+            assert_eq!(None, idx.extension().min_key());
+            assert_eq!(None, idx.extension().max_key());
 
             idx.insert(1, 1);
             idx.insert(2, 2);
@@ -288,33 +247,33 @@ mod tests {
 
             // remove min key
             idx.delete(1, &1);
-            assert_eq!(Some(2), idx.min_idx);
-            assert_eq!(Some(5), idx.max_idx);
+            assert_eq!(Some(2), idx.extension().min_key());
+            assert_eq!(Some(5), idx.extension().max_key());
 
             // remove no max and no min key
             idx.delete(4, &4);
-            assert_eq!(Some(2), idx.min_idx);
-            assert_eq!(Some(5), idx.max_idx);
+            assert_eq!(Some(2), idx.extension().min_key());
+            assert_eq!(Some(5), idx.extension().max_key());
 
             // remove min key
             idx.delete(2, &2);
-            assert_eq!(Some(3), idx.min_idx);
-            assert_eq!(Some(5), idx.max_idx);
+            assert_eq!(Some(3), idx.extension().min_key());
+            assert_eq!(Some(5), idx.extension().max_key());
 
             // invalid pos, no key is removed
             idx.delete(3, &3);
-            assert_eq!(Some(3), idx.min_idx);
-            assert_eq!(Some(5), idx.max_idx);
+            assert_eq!(Some(3), idx.extension().min_key());
+            assert_eq!(Some(5), idx.extension().max_key());
 
             // remove last key for pos 2
             idx.delete(3, &2);
-            assert_eq!(Some(5), idx.min_idx);
-            assert_eq!(Some(5), idx.max_idx);
+            assert_eq!(Some(5), idx.extension().min_key());
+            assert_eq!(Some(5), idx.extension().max_key());
 
             // remove last key
             idx.delete(5, &5);
-            assert_eq!(None, idx.min_idx);
-            assert_eq!(None, idx.max_idx);
+            assert_eq!(None, idx.extension().min_key());
+            assert_eq!(None, idx.extension().max_key());
         }
 
         #[test]

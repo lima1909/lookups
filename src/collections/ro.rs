@@ -89,9 +89,6 @@ mod tests {
         assert_eq!(1, l.min_key().unwrap());
         assert_eq!(99, l.max_key().unwrap());
 
-        assert_eq!(1, l.min_key_index().unwrap());
-        assert_eq!(99, l.max_key_index().unwrap());
-
         assert_eq!(vec![1, 99], l.keys().collect::<Vec<_>>());
     }
 
