@@ -14,10 +14,7 @@ pub type MultiUIntLookup<K = usize, X = usize> = UIntLookup<MultiKeyPositon<X>, 
 
 /// `Key` is from type [`usize`] and the information are saved in a List (Store).
 #[derive(Debug)]
-pub struct UIntLookup<P, K = usize, X = usize>
-where
-    P: KeyPosition<X>,
-{
+pub struct UIntLookup<P, K = usize, X = usize> {
     inner: Vec<Option<(K, P)>>,
     min_idx: Option<usize>,
     max_idx: Option<usize>,
@@ -94,15 +91,9 @@ where
 
 /// Implementation for extending the [`Lookup`].
 ///
-pub struct UIntLookupExt<'a, P, K = usize, X = usize>(&'a UIntLookup<P, K, X>)
-where
-    P: KeyPosition<X>;
+pub struct UIntLookupExt<'a, P, K = usize, X = usize>(&'a UIntLookup<P, K, X>);
 
-impl<'a, P, K, X> UIntLookupExt<'a, P, K, X>
-where
-    P: KeyPosition<X>,
-    K: Clone,
-{
+impl<'a, P, K, X> UIntLookupExt<'a, P, K, X> {
     pub fn keys(&self) -> impl Iterator<Item = K> + '_
     where
         K: Clone,
@@ -110,14 +101,20 @@ where
         self.0.values().map(|(key, _)| key.clone())
     }
 
-    pub fn min_key(&self) -> Option<K> {
+    pub fn min_key(&self) -> Option<K>
+    where
+        K: Clone,
+    {
         let idx = self.0.min_idx?;
         let pair = self.0.inner[idx].as_ref()?;
         let key = &pair.0;
         Some(key.clone())
     }
 
-    pub fn max_key(&self) -> Option<K> {
+    pub fn max_key(&self) -> Option<K>
+    where
+        K: Clone,
+    {
         let idx = self.0.max_idx?;
         let pair = self.0.inner[idx].as_ref()?;
         let key = &pair.0;
@@ -175,14 +172,8 @@ where
 //
 // ----------- internal (private) helper implementation --------------------------
 //
-impl<P, K, X> UIntLookup<P, K, X>
-where
-    P: KeyPosition<X>,
-{
-    fn values(&self) -> impl Iterator<Item = &(K, P)>
-    where
-        K: Clone,
-    {
+impl<P, K, X> UIntLookup<P, K, X> {
+    fn values(&self) -> impl Iterator<Item = &(K, P)> {
         let min = self.min_idx.unwrap_or_default();
         let max = self.max_idx.unwrap_or_default();
 
