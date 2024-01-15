@@ -48,10 +48,10 @@ mod tests {
     use super::*;
 
     #[derive(Debug, PartialEq)]
-    struct Car(usize, String);
+    struct Car(u16, String);
 
     impl Car {
-        fn id(&self) -> usize {
+        fn id(&self) -> u16 {
             self.0
         }
 
@@ -61,19 +61,19 @@ mod tests {
     }
 
     #[test]
-    fn lvec_usize() {
-        let items = vec![Car(99, "Audi".into()), Car(0, "BMW".into())];
-        let v = LVec::<UniqueUIntLookup, _>::new(Car::id, items);
+    fn lvec_u16() {
+        let items = vec![Car(99, "Audi".into()), Car(1, "BMW".into())];
+        let v = LVec::<UniqueUIntLookup<u16, _>, _>::new(Car::id, items);
 
         let l = v.lookup();
 
-        assert!(l.contains_key(0));
+        assert!(l.contains_key(1));
         assert!(l.contains_key(99));
         assert!(!l.contains_key(1_000));
 
         assert_eq!(
-            vec![&Car(0, "BMW".into())],
-            l.get_by_key(0).collect::<Vec<_>>()
+            vec![&Car(1, "BMW".into())],
+            l.get_by_key(1).collect::<Vec<_>>()
         );
         assert_eq!(
             vec![&Car(99, "Audi".into())],
@@ -82,14 +82,17 @@ mod tests {
         assert!(l.get_by_key(98).next().is_none());
 
         assert_eq!(
-            vec![&Car(0, "BMW".into()), &Car(99, "Audi".into())],
-            l.get_by_many_keys([0, 99]).collect::<Vec<_>>()
+            vec![&Car(1, "BMW".into()), &Car(99, "Audi".into())],
+            l.get_by_many_keys([1, 99]).collect::<Vec<_>>()
         );
 
-        assert_eq!(0, l.min_key_index().unwrap());
+        assert_eq!(1, l.min_key().unwrap());
+        assert_eq!(99, l.max_key().unwrap());
+
+        assert_eq!(1, l.min_key_index().unwrap());
         assert_eq!(99, l.max_key_index().unwrap());
 
-        assert_eq!(vec![0, 99], l.key_indexes().collect::<Vec<_>>());
+        assert_eq!(vec![1, 99], l.keys().collect::<Vec<_>>());
     }
 
     #[test]

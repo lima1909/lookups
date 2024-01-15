@@ -7,13 +7,9 @@
 /// - `multi`:  for a given `Key` exist none or many `Position`
 ///
 pub trait KeyPosition<P> {
-    /// Create an empty/none `KeyPosition`.
-    fn none() -> Self;
     /// Create a new `KeyPosition` with the initial value `pos`.
     fn new(pos: P) -> Self;
 
-    /// Check whether it contains at least one position `P`.
-    fn is_empty(&self) -> bool;
     /// Add a new `pos`.
     fn add_pos(&mut self, pos: P);
     /// Remove a `pos`. If the return value is `true`, than the last position was removed.
@@ -35,29 +31,14 @@ impl<P> KeyPosition<P> for UniqueKeyPositon<P>
 where
     P: PartialEq,
 {
-    /// Create a new `UniqueKeyPositon` with initial value `None`.
-    fn none() -> Self {
-        Self(None)
-    }
-
     /// Create a new Position.
     fn new(pos: P) -> Self {
         Self(Some([pos]))
     }
 
-    /// Check whether it contains at least one position `P`.
-    fn is_empty(&self) -> bool {
-        self.0.is_none()
-    }
-
     /// ## Panics
     /// Panics, the Posion must be unique, so you can not add a further `pos`.
-    fn add_pos(&mut self, pos: P) {
-        if self.0.is_none() {
-            *self = UniqueKeyPositon::new(pos);
-            return;
-        }
-
+    fn add_pos(&mut self, _pos: P) {
         // maybe reuse this key, if the value is None, so can add_pos set a new Some value
         panic!("unique UniqueKeyPositon can not add a new position")
     }
@@ -93,19 +74,9 @@ impl<P> KeyPosition<P> for MultiKeyPositon<P>
 where
     P: Ord + PartialEq,
 {
-    /// Create a new empty `MultiKeyPositon` with initial value `Vec::new()`.
-    fn none() -> Self {
-        Self(Vec::new())
-    }
-
     /// Create a new Position collection with the initial pos.
     fn new(pos: P) -> Self {
         Self(vec![pos])
-    }
-
-    /// Check whether it contains at least one position `P`.
-    fn is_empty(&self) -> bool {
-        self.0.is_empty()
     }
 
     /// Add new Positin to a sorted collection.
@@ -141,30 +112,9 @@ mod tests {
         }
 
         #[test]
-        fn unique_none() {
-            assert_eq!(UniqueKeyPositon::none().0, None::<[usize; 1]>);
-            assert_eq!(UniqueKeyPositon::<usize>::none().as_slice(), &[]);
-
-            assert!(UniqueKeyPositon::<u8>::none().is_empty());
-        }
-
-        #[test]
         fn unique_new() {
             assert_eq!(UniqueKeyPositon::new(7), [7; 1].into());
             assert_eq!(UniqueKeyPositon::new(7).as_slice(), &[7]);
-
-            assert!(!UniqueKeyPositon::new(7).is_empty());
-        }
-
-        #[test]
-        fn add_pos() {
-            let mut pos = UniqueKeyPositon::none();
-            assert!(pos.is_empty());
-
-            pos.add_pos(2);
-            assert!(!pos.is_empty());
-
-            assert_eq!(pos, UniqueKeyPositon::new(2));
         }
 
         #[test]
@@ -181,9 +131,6 @@ mod tests {
 
             assert!(x.remove_pos(&1));
             assert_eq!(x.as_slice(), &[]);
-
-            x.add_pos(2);
-            assert_eq!(x.as_slice(), &[2; 1]);
         }
 
         #[test]
@@ -199,7 +146,6 @@ mod tests {
 
             // the key is alway removed, also returns true for ever
             assert!(x.remove_pos(&2));
-            assert!(x.is_empty());
         }
     }
 
@@ -207,19 +153,9 @@ mod tests {
         use super::super::*;
 
         #[test]
-        fn multi_none() {
-            assert_eq!(MultiKeyPositon::<usize>::none().0, Vec::new());
-            assert_eq!(MultiKeyPositon::<usize>::none().as_slice(), &[]);
-
-            assert!(MultiKeyPositon::<usize>::none().is_empty());
-        }
-
-        #[test]
         fn multi_new() {
             assert_eq!(MultiKeyPositon::new(7), MultiKeyPositon(vec![7]));
             assert_eq!(MultiKeyPositon::new(7).as_slice(), &[7]);
-
-            assert!(!MultiKeyPositon::new(7).is_empty());
         }
 
         #[test]
@@ -276,7 +212,6 @@ mod tests {
 
             // remove after last
             assert!(m.remove_pos(&3));
-            assert!(m.is_empty());
         }
     }
 }

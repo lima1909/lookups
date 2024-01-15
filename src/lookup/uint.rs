@@ -14,12 +14,14 @@ pub type MultiUIntLookup<K = usize, X = usize> = UIntLookup<MultiKeyPositon<X>, 
 
 /// `Key` is from type [`usize`] and the information are saved in a List (Store).
 #[derive(Debug)]
-pub struct UIntLookup<P, K = usize, X = usize> {
-    inner: Vec<P>,
+pub struct UIntLookup<P, K = usize, X = usize>
+where
+    P: KeyPosition<X>,
+{
+    inner: Vec<Option<(K, P)>>,
     min_idx: Option<usize>,
     max_idx: Option<usize>,
-    _key: PhantomData<K>,
-    _pos: PhantomData<X>,
+    _x: PhantomData<X>,
 }
 
 impl<P, K, X> Lookup<K> for UIntLookup<P, K, X>
@@ -34,44 +36,47 @@ where
         UIntLookupExt(self)
     }
 
+    fn key_exist(&self, key: K) -> bool {
+        matches!(self.inner.get(key.into()), Some(Some(_)))
+    }
     fn pos_by_key(&self, key: K) -> &[Self::Pos] {
         match self.inner.get(key.into()) {
-            Some(p) => p.as_slice(),
-            None => &[],
+            Some(Some((_, p))) => p.as_slice(),
+            _ => &[],
         }
     }
 }
 
 impl<P, K, X> Store for UIntLookup<P, K, X>
 where
-    K: Into<usize>,
+    K: Into<usize> + Clone,
     P: KeyPosition<X> + Clone,
 {
     type Key = K;
     type Pos = X;
 
     fn insert(&mut self, key: Self::Key, pos: Self::Pos) {
-        let idx = key.into();
+        let idx = key.clone().into();
 
         if self.inner.len() <= idx {
             let l = if idx == 0 { 2 } else { idx * 2 };
-            self.inner.resize(l, P::none());
+            self.inner.resize(l, None);
         }
 
         match self.inner.get_mut(idx) {
-            Some(p) => p.add_pos(pos),
-            None => self.inner[idx] = P::new(pos),
+            Some(Some((_, p))) => p.add_pos(pos),
+            _ => self.inner[idx] = Some((key, P::new(pos))),
         }
 
         self.insert_min_max(idx);
     }
 
     fn delete(&mut self, key: Self::Key, pos: &Self::Pos) {
-        let idx = key.into();
+        let idx = key.clone().into();
 
-        if let Some(rm_idx) = self.inner.get_mut(idx) {
+        if let Some(Some((_, rm_idx))) = self.inner.get_mut(idx) {
             if rm_idx.remove_pos(pos) {
-                self.inner[idx] = P::none();
+                self.inner[idx] = None;
                 self.delete_min_max(idx);
             }
         }
@@ -82,24 +87,41 @@ where
             inner: Vec::with_capacity(capacity),
             min_idx: None,
             max_idx: None,
-            _key: PhantomData,
-            _pos: PhantomData,
+            _x: PhantomData,
         }
     }
 }
 
 /// Implementation for extending the [`Lookup`].
 ///
-pub struct UIntLookupExt<'a, P, K = usize, X = usize>(&'a UIntLookup<P, K, X>);
+pub struct UIntLookupExt<'a, P, K = usize, X = usize>(&'a UIntLookup<P, K, X>)
+where
+    P: KeyPosition<X>;
 
-impl<'a, P, K, X> UIntLookupExt<'a, P, K, X> {
-    pub fn key_indexes(&self) -> impl Iterator<Item = usize> + 'a
+impl<'a, P, K, X> UIntLookupExt<'a, P, K, X>
+where
+    P: KeyPosition<X>,
+    K: Clone,
+{
+    pub fn keys(&self) -> impl Iterator<Item = K> + '_
     where
-        P: KeyPosition<X>,
+        K: Clone,
     {
-        self.0
-            .key_iter(self.0.min_idx.unwrap_or_default())
-            .filter_map(not_none)
+        self.0.values().map(|(key, _)| key.clone())
+    }
+
+    pub fn min_key(&self) -> Option<K> {
+        let idx = self.0.min_idx?;
+        let pair = self.0.inner[idx].as_ref()?;
+        let key = &pair.0;
+        Some(key.clone())
+    }
+
+    pub fn max_key(&self) -> Option<K> {
+        let idx = self.0.max_idx?;
+        let pair = self.0.inner[idx].as_ref()?;
+        let key = &pair.0;
+        Some(key.clone())
     }
 
     pub fn min_key_index(&self) -> Option<usize> {
@@ -115,13 +137,14 @@ impl<'a, P, K, X> UIntLookupExt<'a, P, K, X> {
 impl<P, K, X> UIntLookup<P, K, X>
 where
     P: KeyPosition<X>,
+    K: Into<usize> + Clone,
 {
     // Intersection is using for AND
     #[allow(dead_code)]
-    fn intersection<'a>(&'a self, other: &'a Self) -> impl Iterator<Item = (usize, &[X])> + 'a {
-        self.key_iter(0).filter_map(|(idx, p)| {
-            if !p.is_empty() && other.contains_index(idx) {
-                return Some((idx, p.as_slice()));
+    fn intersection<'a>(&'a self, other: &'a Self) -> impl Iterator<Item = (K, &[X])> + 'a {
+        self.values().filter_map(|(key, p)| {
+            if other.key_exist(key.clone()) {
+                return Some((key.clone(), p.as_slice()));
             }
 
             None
@@ -130,23 +153,18 @@ where
 
     // Union is using for OR
     #[allow(dead_code)]
-    pub fn union<'a>(&'a self, other: &'a Self) -> impl Iterator<Item = (usize, &[X])> + 'a {
-        self.key_iter(0)
-            .filter_map(|(idx, p)| {
-                if !p.is_empty() {
-                    return Some((idx, p.as_slice()));
-                }
-                None
-            })
+    pub fn union<'a>(&'a self, other: &'a Self) -> impl Iterator<Item = (K, &[X])> + 'a {
+        self.values()
+            .map(|(key, p)| (key.clone(), p.as_slice()))
             .chain(other.difference(self))
     }
 
     // Difference are `Key`s which are in self but not in other.
     #[allow(dead_code)]
-    fn difference<'a>(&'a self, other: &'a Self) -> impl Iterator<Item = (usize, &[X])> + 'a {
-        self.key_iter(0).filter_map(|(idx, p)| {
-            if !p.is_empty() && !other.contains_index(idx) {
-                return Some((idx, p.as_slice()));
+    fn difference<'a>(&'a self, other: &'a Self) -> impl Iterator<Item = (K, &[X])> + 'a {
+        self.values().filter_map(|(key, p)| {
+            if !other.key_exist(key.clone()) {
+                return Some((key.clone(), p.as_slice()));
             }
 
             None
@@ -157,18 +175,18 @@ where
 //
 // ----------- internal (private) helper implementation --------------------------
 //
-impl<P, K, X> UIntLookup<P, K, X> {
-    fn contains_index(&self, idx: usize) -> bool
+impl<P, K, X> UIntLookup<P, K, X>
+where
+    P: KeyPosition<X>,
+{
+    fn values(&self) -> impl Iterator<Item = &(K, P)>
     where
-        P: KeyPosition<X>,
+        K: Clone,
     {
-        matches!(self.inner.get(idx), Some(p) if !p.is_empty())
-    }
-
-    fn key_iter(&self, start_idx: usize) -> impl Iterator<Item = (usize, &'_ P)> {
+        let min = self.min_idx.unwrap_or_default();
         let max = self.max_idx.unwrap_or_default();
 
-        self.inner[start_idx..=max].iter().enumerate()
+        self.inner[min..=max].iter().filter_map(|v| v.as_ref())
     }
 
     fn insert_min_max(&mut self, new_value: usize) {
@@ -189,10 +207,7 @@ impl<P, K, X> UIntLookup<P, K, X> {
         }
     }
 
-    fn delete_min_max(&mut self, new_value: usize)
-    where
-        P: KeyPosition<X>,
-    {
+    fn delete_min_max(&mut self, new_value: usize) {
         match (self.min_idx, self.max_idx) {
             (None, None) => {}
             (Some(min), Some(max)) => {
@@ -206,33 +221,22 @@ impl<P, K, X> UIntLookup<P, K, X> {
         }
     }
 
-    fn find_min_idx(&self) -> Option<usize>
-    where
-        P: KeyPosition<X>,
-    {
-        self.inner.iter().enumerate().find_map(not_none)
-    }
-
-    fn find_max_idx(&self) -> Option<usize>
-    where
-        P: KeyPosition<X>,
-    {
-        self.inner.iter().rev().enumerate().find_map(|(pos, p)| {
-            if p.is_empty() {
-                None
-            } else {
-                Some(self.inner.len() - pos - 1)
+    fn find_min_idx(&self) -> Option<usize> {
+        self.inner.iter().enumerate().find_map(|(pos, o)| {
+            if o.is_some() {
+                return Some(pos);
             }
+            None
         })
     }
-}
 
-#[inline]
-fn not_none<X, P: KeyPosition<X>>((pos, p): (usize, &P)) -> Option<usize> {
-    if p.is_empty() {
-        None
-    } else {
-        Some(pos)
+    fn find_max_idx(&self) -> Option<usize> {
+        self.inner.iter().rev().enumerate().find_map(|(pos, o)| {
+            if o.is_some() {
+                return Some(self.inner.len() - pos - 1);
+            }
+            None
+        })
     }
 }
 
