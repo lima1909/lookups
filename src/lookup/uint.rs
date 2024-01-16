@@ -1,5 +1,8 @@
 //! The `uint` is a lookup which are using the index position (the `Key`) in a `Vec` find all `Position`s.
 //!
+//! This lookup is well suited for consecutive numbers, which starts by `0` or `1`.
+//! One use case for this conditions are primary keys (e.g. artificially created).
+//!
 //! ## Advantages:
 //! - the finding of an `Key` is very fast (you can __directly__ jump to the value (`Key`))
 //! - the `Key`s are sorted (so you get the possibility to use BitAnd and BitOr for a `Vec` for the `Key`)
@@ -16,7 +19,7 @@ pub type MultiUIntLookup<K = usize, X = usize> = UIntLookup<MultiKeyPositon<X>, 
 #[derive(Debug)]
 pub struct UIntLookup<P, K = usize, X = usize> {
     inner: Vec<Option<(K, P)>>,
-    max_idx: usize,
+    max_index: usize,
     _x: PhantomData<X>,
 }
 
@@ -46,7 +49,7 @@ where
 impl<P, K, X> Store for UIntLookup<P, K, X>
 where
     K: Into<usize> + Clone,
-    P: KeyPosition<X> + Clone,
+    P: KeyPosition<X>,
 {
     type Key = K;
     type Pos = X;
@@ -54,19 +57,18 @@ where
     fn insert(&mut self, key: Self::Key, pos: Self::Pos) {
         let idx = key.clone().into();
 
-        if self.inner.len() <= idx {
-            let l = if idx == 0 { 2 } else { idx * 2 };
-            self.inner.resize(l, None);
-        }
+        // if necessary (len <= idx), than extend the vec
+        self.inner.extend((self.inner.len()..=idx).map(|_| None));
 
+        // insert new key and pos
         match self.inner.get_mut(idx) {
             Some(Some((_, p))) => p.add_pos(pos),
             _ => self.inner[idx] = Some((key, P::new(pos))),
         }
 
         // define new max index
-        if self.max_idx < idx {
-            self.max_idx = idx
+        if self.max_index < idx {
+            self.max_index = idx
         }
     }
 
@@ -75,11 +77,12 @@ where
 
         if let Some(Some((_, rm_idx))) = self.inner.get_mut(idx) {
             if rm_idx.remove_pos(pos) {
+                // las pos was deleted
                 self.inner[idx] = None;
 
                 // define new max index
-                if self.max_idx == idx {
-                    self.max_idx = self.max_key().map(|key| key.into()).unwrap_or_default()
+                if self.max_index == idx {
+                    self.max_index = self.find_new_max_index()
                 }
             }
         }
@@ -88,7 +91,7 @@ where
     fn with_capacity(capacity: usize) -> Self {
         Self {
             inner: Vec::with_capacity(capacity),
-            max_idx: 0,
+            max_index: 0,
             _x: PhantomData,
         }
     }
@@ -102,19 +105,23 @@ impl<'a, P, K, X> UIntLookupExt<'a, P, K, X>
 where
     K: Clone,
 {
-    pub fn keys(&self) -> impl Iterator<Item = K> + '_
-    where
-        K: Into<usize>,
-    {
+    pub fn keys(&self) -> impl Iterator<Item = K> + '_ {
         self.0.values().map(|(key, _)| key.clone())
     }
 
     pub fn min_key(&self) -> Option<K> {
-        self.0.min_key()
+        self.0
+            .inner
+            .iter()
+            .find_map(|o| o.as_ref().map(|(k, _)| k.clone()))
     }
 
     pub fn max_key(&self) -> Option<K> {
-        self.0.max_key()
+        self.0
+            .inner
+            .get(self.0.max_index)?
+            .as_ref()
+            .map(|(k, _)| k.clone())
     }
 }
 
@@ -127,7 +134,13 @@ where
     // Intersection is using for AND
     #[allow(dead_code)]
     fn intersection<'a>(&'a self, other: &'a Self) -> impl Iterator<Item = (K, &[X])> + 'a {
-        self.values().filter_map(|(key, p)| {
+        let (main, other) = if self.inner.len() <= other.inner.len() {
+            (self, other)
+        } else {
+            (other, self)
+        };
+
+        main.values().filter_map(|(key, p)| {
             if other.key_exist(key.clone()) {
                 return Some((key.clone(), p.as_slice()));
             }
@@ -139,9 +152,15 @@ where
     // Union is using for OR
     #[allow(dead_code)]
     pub fn union<'a>(&'a self, other: &'a Self) -> impl Iterator<Item = (K, &[X])> + 'a {
-        self.values()
+        let (main, other) = if self.inner.len() >= other.inner.len() {
+            (self, other)
+        } else {
+            (other, self)
+        };
+
+        main.values()
             .map(|(key, p)| (key.clone(), p.as_slice()))
-            .chain(other.difference(self))
+            .chain(other.difference(main))
     }
 
     // Difference are `Key`s which are in self but not in other.
@@ -163,30 +182,24 @@ where
 impl<P, K, X> UIntLookup<P, K, X> {
     #[inline(always)]
     fn values(&self) -> impl Iterator<Item = &(K, P)> {
-        self.inner[..=self.max_idx]
+        self.inner[..=self.max_index]
             .iter()
             .filter_map(|v| v.as_ref())
     }
 
     #[inline(always)]
-    pub fn min_key(&self) -> Option<K>
-    where
-        K: Clone,
-    {
+    fn find_new_max_index(&self) -> usize {
         self.inner
             .iter()
-            .find_map(|o| o.as_ref().map(|(k, _)| k.clone()))
-    }
-
-    #[inline(always)]
-    fn max_key(&self) -> Option<K>
-    where
-        K: Clone,
-    {
-        self.inner
-            .iter()
+            .enumerate()
             .rev()
-            .find_map(|o| o.as_ref().map(|(k, _)| k.clone()))
+            .find_map(|(idx, o)| {
+                if o.is_some() {
+                    return Some(idx);
+                }
+                None
+            })
+            .unwrap_or_default()
     }
 }
 
@@ -199,6 +212,45 @@ mod tests {
 
         #[test]
         fn by_insert() {
+            let mut idx = MultiUIntLookup::<usize, usize>::with_capacity(0);
+
+            // both not set
+            assert_eq!(None, idx.extension().min_key());
+            assert_eq!(None, idx.extension().max_key());
+            assert_eq!(0, idx.max_index);
+
+            // first insert, max and min are equal
+            idx.insert(1, 1);
+            assert_eq!(Some(1), idx.extension().min_key());
+            assert_eq!(Some(1), idx.extension().max_key());
+            assert_eq!(1, idx.max_index);
+
+            // first insert, max and min are equal
+            idx.insert(10, 1);
+            assert_eq!(Some(1), idx.extension().min_key());
+            assert_eq!(Some(10), idx.extension().max_key());
+            assert_eq!(10, idx.max_index);
+
+            idx.insert(11, 1);
+            assert_eq!(Some(1), idx.extension().min_key());
+            assert_eq!(Some(11), idx.extension().max_key());
+            assert_eq!(11, idx.max_index);
+
+            idx.delete(10, &1);
+            idx.delete(11, &1);
+            assert_eq!(Some(1), idx.extension().min_key());
+            assert_eq!(Some(1), idx.extension().max_key());
+            assert_eq!(1, idx.max_index);
+
+            // remove last
+            idx.delete(1, &1);
+            assert_eq!(None, idx.extension().min_key());
+            assert_eq!(None, idx.extension().max_key());
+            assert_eq!(0, idx.max_index);
+        }
+
+        #[test]
+        fn by_insertwith_capacity() {
             let mut idx = UniqueUIntLookup::<usize, usize>::with_capacity(5);
 
             // both not set
@@ -305,7 +357,7 @@ mod tests {
             other.insert(5, 5);
 
             assert_eq!(
-                vec![(3usize, vec![3usize].as_slice())],
+                vec![(3usize, vec![3].as_slice())],
                 idx.intersection(&other).collect::<Vec<_>>()
             );
 
@@ -318,7 +370,7 @@ mod tests {
             idx.insert(3, 3);
 
             assert_eq!(
-                vec![(2usize, vec![2usize].as_slice()), (3, vec![3].as_slice())],
+                vec![(2usize, vec![2].as_slice()), (3, vec![3].as_slice())],
                 idx.intersection(&other).collect::<Vec<_>>()
             );
         }
@@ -336,10 +388,10 @@ mod tests {
 
             assert_eq!(
                 vec![
-                    (1usize, vec![1usize].as_slice()),
+                    (2usize, vec![2].as_slice()),
                     (3, &[3]),
-                    (2, &[2]),
-                    (5, &[5])
+                    (5, &[5]),
+                    (1, &[1]),
                 ],
                 idx.union(&other).collect::<Vec<_>>()
             );
@@ -348,10 +400,10 @@ mod tests {
             idx.delete(3, &3);
             assert_eq!(
                 vec![
-                    (1usize, vec![1usize].as_slice()),
-                    (2, &[2]),
+                    (2usize, vec![2].as_slice()),
                     (3, &[3]),
-                    (5, &[5])
+                    (5, &[5]),
+                    (1, &[1]),
                 ],
                 idx.union(&other).collect::<Vec<_>>()
             );
@@ -362,10 +414,10 @@ mod tests {
 
             assert_eq!(
                 vec![
-                    (1usize, vec![1usize].as_slice()),
-                    (2, &[2]),
+                    (2usize, vec![2].as_slice()),
                     (3, &[3]),
-                    (5, &[5])
+                    (5, &[5]),
+                    (1, &[1])
                 ],
                 idx.union(&other).collect::<Vec<_>>()
             );
@@ -383,14 +435,14 @@ mod tests {
             other.insert(5, 5);
 
             assert_eq!(
-                vec![(1usize, vec![1usize].as_slice())],
+                vec![(1usize, vec![1].as_slice())],
                 idx.difference(&other).collect::<Vec<_>>()
             );
 
             // after delete 3, the difference is the same
             idx.delete(3, &3);
             assert_eq!(
-                vec![(1usize, vec![1usize].as_slice())],
+                vec![(1usize, vec![1].as_slice())],
                 idx.difference(&other).collect::<Vec<_>>()
             );
 
@@ -406,7 +458,7 @@ mod tests {
             idx.insert(0, 0);
             idx.insert(99, 99);
             assert_eq!(
-                vec![(0usize, vec![0usize].as_slice()), (99, &[99])],
+                vec![(0usize, vec![0].as_slice()), (99, &[99])],
                 idx.difference(&other).collect::<Vec<_>>()
             );
         }
