@@ -31,10 +31,10 @@ where
     type Pos = X;
     type Extension<'a> = UIntLookupExt<'a, P, K, X>
     where
-        Self: 'a,
-        P: 'a, 
-        K: 'a, 
-        X: 'a;
+        P: 'a,
+        K: 'a,
+        X: 'a,
+        Self: 'a;
 
     fn extension(&self) -> Self::Extension<'_> {
         UIntLookupExt(self)
@@ -128,6 +128,20 @@ where
             .as_ref()
             .map(|(k, _)| k.clone())
     }
+
+    // pub fn key_greater_than(&self, key: K) -> Option<K>
+    // where
+    //     K: Into<usize> + PartialOrd,
+    // {
+    //     let idx = key.clone().into();
+    //     if self.0.inner.len() < idx {
+    //         return None;
+    //     }
+
+    //     self.0.inner[idx..]
+    //         .iter()
+    //         .find_map(|o| o.as_ref().map(|(k, _)| k.clone()))
+    // }
 }
 
 //
