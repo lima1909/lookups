@@ -8,10 +8,7 @@
 //! - the `Key`s are sorted (so you get the possibility to use BitAnd and BitOr for a `Vec` for the `Key`)
 //!
 use crate::lookup::store::{KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon};
-use std::{
-    marker::PhantomData,
-    ops::{BitAnd, BitOr},
-};
+use std::marker::PhantomData;
 
 /// Implementation for a `UIntLookup` with unique `Position`.
 pub type UniqueUIntLookup<K = usize, X = usize> = UIntLookup<UniqueKeyPositon<X>, K, X>;
@@ -32,7 +29,12 @@ where
     P: KeyPosition<X>,
 {
     type Pos = X;
-    type Extension<'a> = UIntLookupExt<'a, P, K, X> where P:'a, K:'a, X: 'a;
+    type Extension<'a> = UIntLookupExt<'a, P, K, X>
+    where
+        Self: 'a,
+        P: 'a, 
+        K: 'a, 
+        X: 'a;
 
     fn extension(&self) -> Self::Extension<'_> {
         UIntLookupExt(self)
@@ -132,19 +134,6 @@ where
 // ----------- internal (private) helper implementation --------------------------
 //
 impl<P, K, X> UIntLookup<P, K, X> {
-    fn insert_key_position(&mut self, key: K, pos: P)
-    where
-        K: Into<usize> + Clone,
-    {
-        let idx = key.clone().into();
-        self.inner[idx] = Some((key, pos));
-
-        // define new max index
-        if self.max_index < idx {
-            self.max_index = idx
-        }
-    }
-
     #[inline(always)]
     fn values(&self) -> impl Iterator<Item = &(K, P)> {
         self.inner[..=self.max_index]
@@ -165,74 +154,6 @@ impl<P, K, X> UIntLookup<P, K, X> {
                 None
             })
             .unwrap_or_default()
-    }
-
-    // Difference are `Key`s which are in self but not in other.
-    fn difference<'a>(&'a self, other: &'a Self) -> impl Iterator<Item = (K, &P)> + 'a
-    where
-        P: KeyPosition<X>,
-        K: Into<usize> + Clone,
-    {
-        self.values().filter_map(|(key, p)| {
-            if !other.key_exist(key.clone()) {
-                return Some((key.clone(), p));
-            }
-
-            None
-        })
-    }
-}
-
-impl<P, K, X> BitAnd<&UIntLookup<P, K, X>> for &UIntLookup<P, K, X>
-where
-    P: KeyPosition<X> + Clone,
-    K: Into<usize> + Clone,
-{
-    type Output = UIntLookup<P, K, X>;
-
-    fn bitand(self, rhs: &UIntLookup<P, K, X>) -> Self::Output {
-        let (main, other) = if self.inner.len() <= rhs.inner.len() {
-            (self, rhs)
-        } else {
-            (rhs, self)
-        };
-
-        let mut target = UIntLookup::<P, K, X>::with_capacity(main.inner.len());
-
-        main.values().for_each(|(key, pos)| {
-            if other.key_exist(key.clone()) {
-                target.insert_key_position(key.clone(), pos.clone());
-            }
-        });
-
-        target
-    }
-}
-
-impl<P, K, X> BitOr<&UIntLookup<P, K, X>> for &UIntLookup<P, K, X>
-where
-    P: KeyPosition<X> + Clone,
-    K: Into<usize> + Clone,
-{
-    type Output = UIntLookup<P, K, X>;
-
-    fn bitor(self, rhs: &UIntLookup<P, K, X>) -> Self::Output {
-        let (main, other) = if self.inner.len() >= rhs.inner.len() {
-            (self, rhs)
-        } else {
-            (rhs, self)
-        };
-
-        let mut target = UIntLookup::<P, K, X>::with_capacity(main.inner.len());
-
-        main.values()
-            .map(|(key, p)| (key.clone(), p))
-            .chain(other.difference(main))
-            .for_each(|(key, pos)| {
-                target.insert_key_position(key.clone(), pos.clone());
-            });
-
-        target
     }
 }
 
@@ -372,132 +293,6 @@ mod tests {
 
             idx.insert(2, 2);
             idx.insert(3, 3);
-        }
-    }
-
-    mod union_inters_diff {
-        use super::*;
-        use std::fmt::Debug;
-
-        impl<P, K, X> PartialEq<UIntLookup<P, K, X>> for Vec<(K, &[X])>
-        where
-            P: KeyPosition<X>,
-            K: PartialEq + Clone + Debug,
-            X: PartialEq + Debug,
-        {
-            fn eq(&self, other: &UIntLookup<P, K, X>) -> bool {
-                let inner = other
-                    .inner
-                    .iter()
-                    .filter_map(|opt| {
-                        if let Some((k, p)) = opt {
-                            return Some((k.clone(), p.as_slice()));
-                        }
-                        None
-                    })
-                    .collect::<Vec<_>>();
-
-                inner.eq(self.as_slice())
-            }
-        }
-
-        #[test]
-        fn intersection() {
-            let mut idx = MultiUIntLookup::<usize, usize>::with_capacity(5);
-            idx.insert(1, 1);
-            idx.insert(3, 3);
-
-            let mut other = MultiUIntLookup::<usize, usize>::with_capacity(5);
-            other.insert(2, 2);
-            other.insert(3, 3);
-            other.insert(5, 5);
-
-            assert_eq!(vec![(3usize, [3usize].as_slice())], (&idx & &other));
-
-            // insert new two
-            idx.insert(2, 2);
-            idx.insert(3, 7);
-
-            assert_eq!(
-                vec![(2usize, [2usize].as_slice()), (3, [3, 7].as_slice())],
-                (&idx & &other)
-            );
-        }
-
-        #[test]
-        fn union() {
-            let mut idx = UniqueUIntLookup::<usize, usize>::with_capacity(0);
-            idx.insert(1, 1);
-            idx.insert(3, 3);
-
-            let mut other = UniqueUIntLookup::<usize, usize>::with_capacity(0);
-            other.insert(2, 2);
-            other.insert(3, 3);
-            other.insert(5, 5);
-
-            assert_eq!(
-                vec![(1usize, [1].as_slice()), (2, &[2]), (3, &[3]), (5, &[5]),],
-                (&other | &idx)
-            );
-
-            // after delete 3, the intersection is empty
-            idx.delete(3, &3);
-            assert_eq!(
-                vec![(1, [1].as_slice()), (2usize, &[2]), (3, &[3]), (5, &[5]),],
-                (&idx | &other)
-            );
-
-            // insert new two
-            idx.insert(2, 2);
-            idx.insert(3, 3);
-
-            assert_eq!(
-                vec![(1, [1].as_slice()), (2usize, &[2]), (3, &[3]), (5, &[5]),],
-                (&idx | &other)
-            );
-        }
-
-        #[test]
-        fn difference() {
-            let mut idx = UniqueUIntLookup::<usize, usize>::with_capacity(5);
-            idx.insert(1, 1);
-            idx.insert(3, 3);
-
-            let mut other = UniqueUIntLookup::<usize, usize>::with_capacity(5);
-            other.insert(2, 2);
-            other.insert(3, 3);
-            other.insert(5, 5);
-
-            assert_eq!(
-                vec![(1usize, &UniqueKeyPositon::new(1))],
-                idx.difference(&other).collect::<Vec<_>>()
-            );
-
-            // after delete 3, the difference is the same
-            idx.delete(3, &3);
-            assert_eq!(
-                vec![(1usize, &UniqueKeyPositon::new(1))],
-                idx.difference(&other).collect::<Vec<_>>()
-            );
-
-            // after delete 1, the difference is empty
-            idx.delete(1, &1);
-            assert_eq!(None, idx.difference(&other).next());
-
-            // insert new two
-            idx.insert(2, 2);
-            idx.insert(3, 3);
-            assert_eq!(None, idx.difference(&other).next());
-
-            idx.insert(0, 0);
-            idx.insert(99, 99);
-            assert_eq!(
-                vec![
-                    (0usize, &UniqueKeyPositon::new(0)),
-                    (99, &UniqueKeyPositon::new(99))
-                ],
-                idx.difference(&other).collect::<Vec<_>>()
-            );
         }
     }
 
