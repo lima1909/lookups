@@ -25,7 +25,7 @@ impl<S, I> LVec<S, I> {
         }
     }
 
-    pub fn lookup<Q>(&self) -> Retriever<'_, S, &[I], Q>
+    pub fn lookup<Q>(&self) -> Retriever<'_, S, Vec<I>, Q>
     where
         S: Lookup<Q, Pos = usize>,
     {
@@ -86,10 +86,10 @@ mod tests {
             l.get_by_many_keys([1, 99]).collect::<Vec<_>>()
         );
 
-        assert_eq!(1, l.min_key().unwrap());
-        assert_eq!(99, l.max_key().unwrap());
+        assert_eq!(1, v.lookup().min_key().unwrap());
+        assert_eq!(99, v.lookup().max_key().unwrap());
 
-        assert_eq!(vec![1, 99], l.keys().collect::<Vec<_>>());
+        assert_eq!(vec![1, 99], v.lookup().keys().collect::<Vec<_>>());
     }
 
     #[test]
@@ -111,8 +111,12 @@ mod tests {
             l.get_by_many_keys(["Audi", "BMW"]).collect::<Vec<_>>()
         );
 
-        let keys = l.keys().collect::<std::collections::HashSet<_>>();
-        assert!(keys.contains(&String::from("Audi")));
-        assert!(keys.contains(&String::from("BMW")));
+        let keys = v
+            .lookup::<&str>()
+            .keys()
+            .cloned()
+            .collect::<std::collections::HashSet<_>>();
+        assert!(keys.contains("Audi"));
+        assert!(keys.contains("BMW"));
     }
 }

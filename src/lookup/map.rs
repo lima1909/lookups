@@ -31,7 +31,7 @@ where
     where
         Self: 'a;
 
-    fn extension(&self) -> Self::Extension<'_> {
+    fn ext(&self) -> Self::Extension<'_> {
         MapLookupExt(self)
     }
 

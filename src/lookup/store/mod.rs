@@ -2,6 +2,7 @@
 //!
 pub mod position;
 
+pub use crate::lookup::Itemer;
 pub use position::{KeyPosition, MultiKeyPositon, UniqueKeyPositon};
 
 /// Store is an container which the mapping between the `Key`s and they `Position`s stored.
@@ -36,15 +37,13 @@ pub trait Store {
 ///
 pub trait Lookup<Q> {
     type Pos;
-
     type Extension<'a>
     where
         Self: 'a;
 
-    /// Returns an extension for the `Lookup` implementation
-    /// with specific capability,
-    /// which are only supported by this concrete implementation.
-    fn extension(&self) -> Self::Extension<'_>;
+    /// Is an extension for the `Lookup` implementation.
+    /// The `Extiesion` provides `Lookup` specific capability.
+    fn ext(&self) -> Self::Extension<'_>;
 
     /// Returns all known positions for a given `Key`.
     /// If the `Key` not exist, than is the slice empty.
@@ -121,6 +120,7 @@ where
     }
 }
 
+// ---- internal trait to create a Store by a given Iterator --------------
 pub(crate) trait ToStore<'a, Item, Pos> {
     fn to_store<S, F>(self, field: F) -> S
     where
@@ -198,7 +198,7 @@ mod tests {
         where
             Self: 'a;
 
-        fn extension(&self) -> Self::Extension<'_> {}
+        fn ext(&self) -> Self::Extension<'_> {}
 
         fn pos_by_key(&self, key: &Q) -> &[Self::Pos] {
             match self.idx.get(key) {

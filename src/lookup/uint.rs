@@ -31,12 +31,9 @@ where
     type Pos = X;
     type Extension<'a> = UIntLookupExt<'a, P, K, X>
     where
-        P: 'a,
-        K: 'a,
-        X: 'a,
         Self: 'a;
 
-    fn extension(&self) -> Self::Extension<'_> {
+    fn ext(&self) -> Self::Extension<'_> {
         UIntLookupExt(self)
     }
 
@@ -106,14 +103,21 @@ where
 ///
 pub struct UIntLookupExt<'a, P, K = usize, X = usize>(&'a UIntLookup<P, K, X>);
 
+/// The `UIntLookupExt` can be not the fastest.
+/// It depends, on how much gaps are between thes `Key`s.
+///
 impl<'a, P, K, X> UIntLookupExt<'a, P, K, X>
 where
     K: Clone,
 {
+    /// Returns all stored `Key`s.
     pub fn keys(&self) -> impl Iterator<Item = K> + '_ {
-        self.0.values().map(|(key, _)| key.clone())
+        self.0.inner[..=self.0.max_index]
+            .iter()
+            .filter_map(|o| o.as_ref().map(|(key, _)| key.clone()))
     }
 
+    /// Returns smallest stored `Key`.
     pub fn min_key(&self) -> Option<K> {
         self.0
             .inner
@@ -121,6 +125,7 @@ where
             .find_map(|o| o.as_ref().map(|(k, _)| k.clone()))
     }
 
+    /// Returns greatest stored `Key`.
     pub fn max_key(&self) -> Option<K> {
         self.0
             .inner
@@ -128,33 +133,12 @@ where
             .as_ref()
             .map(|(k, _)| k.clone())
     }
-
-    // pub fn key_greater_than(&self, key: K) -> Option<K>
-    // where
-    //     K: Into<usize> + PartialOrd,
-    // {
-    //     let idx = key.clone().into();
-    //     if self.0.inner.len() < idx {
-    //         return None;
-    //     }
-
-    //     self.0.inner[idx..]
-    //         .iter()
-    //         .find_map(|o| o.as_ref().map(|(k, _)| k.clone()))
-    // }
 }
 
 //
 // ----------- internal (private) helper implementation --------------------------
 //
 impl<P, K, X> UIntLookup<P, K, X> {
-    #[inline(always)]
-    fn values(&self) -> impl Iterator<Item = &(K, P)> {
-        self.inner[..=self.max_index]
-            .iter()
-            .filter_map(|v| v.as_ref())
-    }
-
     #[inline(always)]
     fn find_new_max_index(&self) -> usize {
         self.inner
@@ -183,67 +167,66 @@ mod tests {
             let mut idx = MultiUIntLookup::<usize, usize>::with_capacity(0);
 
             // both not set
-            assert_eq!(None, idx.extension().min_key());
-            assert_eq!(None, idx.extension().max_key());
+            assert_eq!(None, idx.ext().min_key());
+            assert_eq!(None, idx.ext().max_key());
             assert_eq!(0, idx.max_index);
 
             // first insert, max and min are equal
-            idx.insert(1, 1);
-            assert_eq!(Some(1), idx.extension().min_key());
-            assert_eq!(Some(1), idx.extension().max_key());
+            idx.insert(1, 0);
+            assert_eq!(Some(1), idx.ext().min_key());
+            assert_eq!(Some(1), idx.ext().max_key());
             assert_eq!(1, idx.max_index);
 
             // first insert, max and min are equal
             idx.insert(10, 1);
-            assert_eq!(Some(1), idx.extension().min_key());
-            assert_eq!(Some(10), idx.extension().max_key());
+            assert_eq!(Some(1), idx.ext().min_key());
+            assert_eq!(Some(10), idx.ext().max_key());
             assert_eq!(10, idx.max_index);
 
-            idx.insert(11, 1);
-            assert_eq!(Some(1), idx.extension().min_key());
-            assert_eq!(Some(11), idx.extension().max_key());
+            idx.insert(11, 2);
+            assert_eq!(Some(1), idx.ext().min_key());
+            assert_eq!(Some(11), idx.ext().max_key());
             assert_eq!(11, idx.max_index);
 
             idx.delete(10, &1);
-            idx.delete(11, &1);
-            assert_eq!(Some(1), idx.extension().min_key());
-            assert_eq!(Some(1), idx.extension().max_key());
+            idx.delete(11, &2);
+            assert_eq!(Some(1), idx.ext().min_key());
+            assert_eq!(Some(1), idx.ext().max_key());
             assert_eq!(1, idx.max_index);
 
             // remove last
-            idx.delete(1, &1);
-            assert_eq!(None, idx.extension().min_key());
-            assert_eq!(None, idx.extension().max_key());
+            idx.delete(1, &0);
+            assert_eq!(None, idx.ext().min_key());
+            assert_eq!(None, idx.ext().max_key());
             assert_eq!(0, idx.max_index);
         }
 
         #[test]
         fn by_insertwith_capacity() {
             let mut idx = UniqueUIntLookup::<usize, usize>::with_capacity(5);
-
             // both not set
-            assert_eq!(None, idx.extension().min_key());
-            assert_eq!(None, idx.extension().max_key());
+            assert_eq!(None, idx.ext().min_key());
+            assert_eq!(None, idx.ext().max_key());
 
             // first insert, max and min are equal
             idx.insert(1, 1);
-            assert_eq!(Some(1), idx.extension().min_key());
-            assert_eq!(Some(1), idx.extension().max_key());
+            assert_eq!(Some(1), idx.ext().min_key());
+            assert_eq!(Some(1), idx.ext().max_key());
 
             // min and max are different
             idx.insert(4, 4);
-            assert_eq!(Some(1), idx.extension().min_key());
-            assert_eq!(Some(4), idx.extension().max_key());
+            assert_eq!(Some(1), idx.ext().min_key());
+            assert_eq!(Some(4), idx.ext().max_key());
 
             // new min
             idx.insert(0, 0);
-            assert_eq!(Some(0), idx.extension().min_key());
-            assert_eq!(Some(4), idx.extension().max_key());
+            assert_eq!(Some(0), idx.ext().min_key());
+            assert_eq!(Some(4), idx.ext().max_key());
 
             // new max
             idx.insert(6, 6);
-            assert_eq!(Some(0), idx.extension().min_key());
-            assert_eq!(Some(6), idx.extension().max_key());
+            assert_eq!(Some(0), idx.ext().min_key());
+            assert_eq!(Some(6), idx.ext().max_key());
         }
 
         #[test]
@@ -251,13 +234,13 @@ mod tests {
             let mut idx = MultiUIntLookup::<usize, usize>::with_capacity(5);
 
             // min/max not set
-            assert_eq!(None, idx.extension().min_key());
-            assert_eq!(None, idx.extension().max_key());
+            assert_eq!(None, idx.ext().min_key());
+            assert_eq!(None, idx.ext().max_key());
 
             // remove not exist key/pos pair
             idx.delete(1, &1);
-            assert_eq!(None, idx.extension().min_key());
-            assert_eq!(None, idx.extension().max_key());
+            assert_eq!(None, idx.ext().min_key());
+            assert_eq!(None, idx.ext().max_key());
 
             idx.insert(1, 1);
             idx.insert(2, 2);
@@ -267,33 +250,33 @@ mod tests {
 
             // remove min key
             idx.delete(1, &1);
-            assert_eq!(Some(2), idx.extension().min_key());
-            assert_eq!(Some(5), idx.extension().max_key());
+            assert_eq!(Some(2), idx.ext().min_key());
+            assert_eq!(Some(5), idx.ext().max_key());
 
             // remove no max and no min key
             idx.delete(4, &4);
-            assert_eq!(Some(2), idx.extension().min_key());
-            assert_eq!(Some(5), idx.extension().max_key());
+            assert_eq!(Some(2), idx.ext().min_key());
+            assert_eq!(Some(5), idx.ext().max_key());
 
             // remove min key
             idx.delete(2, &2);
-            assert_eq!(Some(3), idx.extension().min_key());
-            assert_eq!(Some(5), idx.extension().max_key());
+            assert_eq!(Some(3), idx.ext().min_key());
+            assert_eq!(Some(5), idx.ext().max_key());
 
             // invalid pos, no key is removed
             idx.delete(3, &3);
-            assert_eq!(Some(3), idx.extension().min_key());
-            assert_eq!(Some(5), idx.extension().max_key());
+            assert_eq!(Some(3), idx.ext().min_key());
+            assert_eq!(Some(5), idx.ext().max_key());
 
             // remove last key for pos 2
             idx.delete(3, &2);
-            assert_eq!(Some(5), idx.extension().min_key());
-            assert_eq!(Some(5), idx.extension().max_key());
+            assert_eq!(Some(5), idx.ext().min_key());
+            assert_eq!(Some(5), idx.ext().max_key());
 
             // remove last key
             idx.delete(5, &5);
-            assert_eq!(None, idx.extension().min_key());
-            assert_eq!(None, idx.extension().max_key());
+            assert_eq!(None, idx.ext().min_key());
+            assert_eq!(None, idx.ext().max_key());
         }
 
         #[test]

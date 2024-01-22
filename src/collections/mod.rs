@@ -1,11 +1,9 @@
 //! The `collections` module contains the collections implementations which are using the lookups.
 //!
 
-use crate::collections::item::Itemer;
-use crate::lookup::store::Lookup;
+use crate::lookup::{store::Lookup, Itemer};
 use std::{marker::PhantomData, ops::Deref};
 
-pub mod item;
 pub mod ro;
 
 /// A `Retriever` is the main interface for get Items by an given `Lookup`.
@@ -14,8 +12,8 @@ where
     L: Lookup<Q>,
 {
     lookup: &'a L,
-    extension: L::Extension<'a>,
-    items: I,
+    lookup_ext: L::Extension<'a>,
+    items: &'a I,
     _q: PhantomData<Q>,
 }
 
@@ -24,10 +22,10 @@ where
     L: Lookup<Q>,
 {
     /// Create a new instance of an [`Retriever`].
-    pub fn new(lookup: &'a L, items: I) -> Self {
+    pub fn new(lookup: &'a L, items: &'a I) -> Self {
         Self {
             lookup,
-            extension: lookup.extension(),
+            lookup_ext: lookup.ext(),
             items,
             _q: PhantomData,
         }
@@ -114,8 +112,8 @@ where
     /// ```
     pub fn get_by_many_keys<It>(&self, keys: It) -> impl Iterator<Item = &I::Output>
     where
-        I: Itemer<L::Pos>,
         It: IntoIterator<Item = Q> + 'a,
+        I: Itemer<L::Pos>,
     {
         self.items.items(self.lookup.pos_by_many_keys(keys))
     }
@@ -128,6 +126,6 @@ where
     type Target = L::Extension<'a>;
 
     fn deref(&self) -> &Self::Target {
-        &self.extension
+        &self.lookup_ext
     }
 }
