@@ -1,9 +1,13 @@
-//! The `uint` is a lookup which are using the index position (the `Key`) in a `Vec` find all `Position`s.
+//! The `uint` is a lookup which are using the _index_ position (the `Key`) in a `Vec` find all `Position`s.
 //!
 //! This lookup is well suited for __consecutive numbers__,
 //! which starts by `0` or `1`, and do __not__ have any great __gaps__ in beetween.
 //!
-//! One use case for this conditions are primary keys (e.g. artificially created).
+//! Gaps are a disadvantage by:
+//! - inserting new `Key`s (the Vec mus grow strongly: [`UIntLookup::insert`])
+//! - and by getting all `Key`s with [`UIntLookupExt::keys`]
+//!
+//! One use case for this conditions are __primary keys__ (e.g. artificially created).
 //!
 //! ## Advantages:
 //!

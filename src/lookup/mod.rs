@@ -1,5 +1,13 @@
 //! The `lokkup` module contains the structure for storing and accessing the lookup implementations.
 //!
+//! There are two kinds of `Positions`
+//! - Unique, there is exactly one `Position` (e.g: [`map::UniqueMapLookup`], [`uint::UniqueUIntLookup`])
+//! - Multi there are many `Positions` possible (e.g: [`map::MultiMapLookup`], [`uint::MultiUIntLookup`])
+//!
+//! For the `Key`s exist to lookup implementations
+//! - hasing based lookup (the implementaion is a `HashMap`)  (e.g: [`map::MapLookup`])
+//! - index base lookup (the lookup carried out by the Index from a `Vec`) (e.g: [`uint::UIntLookup`])
+//!
 pub mod map;
 pub mod store;
 pub mod uint;

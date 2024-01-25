@@ -1,4 +1,4 @@
-//! The `map` is a lookup implementation for using hashing with a [`std::collections::HashMap`] or [hashbrown::HashMap](https://crates.io/crates/hashbrown) (feature = "hashbrown").
+//! The `map` is a lookup implementation for using _hashing_: with a [`std::collections::HashMap`] or [hashbrown::HashMap](https://crates.io/crates/hashbrown) (feature = "hashbrown").
 //!
 //! ## Advantages:
 //! - all advantages, which has a hashing procedure
@@ -14,7 +14,7 @@ pub type UniqueMapLookup<K = String, X = usize> = MapLookup<UniqueKeyPositon<X>,
 /// Implementation for a `MapLookup` with multi `Position`s.
 pub type MultiMapLookup<K = String, X = usize> = MapLookup<MultiKeyPositon<X>, K, X>;
 
-/// MapIndex is an implementation for an hash index.
+/// `MapLookup` is an implementation for an hash index.
 ///
 #[derive(Debug)]
 #[repr(transparent)]

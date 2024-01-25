@@ -1,3 +1,7 @@
+//! `Read only` implementations for lookup collections like:
+//! - `LVec` a lookup extended vec
+//! - `LHashMap` a lookup extended map
+//!
 use super::Retriever;
 use crate::lookup::store::{Lookup, Store};
 use std::ops::Deref;
