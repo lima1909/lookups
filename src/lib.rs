@@ -11,7 +11,7 @@
 //! ## Disadvantage
 //!
 //! - it is more memory required. In addition to the user data, data for the _hash_, _index_ are also stored.
-//! - the write operation are slower, because for every wirte operation is a another on (for storing the lookup data) necessary
+//! - the write operation are slower, because for every wirte operation is an another one (for storing the lookup data) necessary
 //!
 //! ## How can I use it?
 //!

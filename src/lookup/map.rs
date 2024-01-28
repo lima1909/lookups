@@ -27,12 +27,12 @@ where
     P: KeyPosition<X>,
 {
     type Pos = X;
-    type Extension<'a> = MapLookupExt<'a, P, K, X>
+    type Extension<'a> = MapLookupExt<'a, P, K>
     where
         Self: 'a;
 
     fn ext(&self) -> Self::Extension<'_> {
-        MapLookupExt(self)
+        MapLookupExt(&self.0)
     }
 
     fn key_exist(&self, key: &Q) -> bool {
@@ -79,16 +79,11 @@ where
 
 /// Implementation for extending the [`Lookup`].
 ///
-pub struct MapLookupExt<'a, P, K = usize, X = usize>(&'a MapLookup<P, K, X>)
-where
-    P: KeyPosition<X>;
+pub struct MapLookupExt<'a, P, K>(&'a HashMap<K, P>);
 
-impl<'a, P, K, X> MapLookupExt<'a, P, K, X>
-where
-    P: KeyPosition<X>,
-{
+impl<'a, P, K> MapLookupExt<'a, P, K> {
     pub fn keys(&self) -> impl Iterator<Item = &'_ K> {
-        self.0 .0.keys()
+        self.0.keys()
     }
 }
 

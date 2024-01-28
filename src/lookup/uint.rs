@@ -119,7 +119,7 @@ where
 
 /// Implementation for extending the [`Lookup`].
 ///
-pub struct UIntLookupExt<'a, P, K = usize, X = usize>(&'a UIntLookup<P, K, X>);
+pub struct UIntLookupExt<'a, P, K, X>(&'a UIntLookup<P, K, X>);
 
 /// The `UIntLookupExt` can be not the fastest.
 /// It depends, on how much gaps are between thes `Key`s.
