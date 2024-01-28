@@ -1,7 +1,10 @@
 //! The `collections` module contains the collections implementations which are using the lookups.
 //!
 
-use crate::lookup::{store::Lookup, Itemer};
+use crate::lookup::{
+    store::{Lookup, LookupExt},
+    Itemer,
+};
 use std::{marker::PhantomData, ops::Deref};
 
 pub mod ro;
@@ -9,7 +12,7 @@ pub mod ro;
 /// A `Retriever` is the main interface for get Items by an given `Lookup`.
 pub struct Retriever<'a, L, I, Q>
 where
-    L: Lookup<Q>,
+    L: LookupExt,
 {
     lookup: &'a L,
     lookup_ext: L::Extension<'a>,
@@ -19,7 +22,7 @@ where
 
 impl<'a, L, I, Q> Retriever<'a, L, I, Q>
 where
-    L: Lookup<Q>,
+    L: Lookup<Q> + LookupExt,
 {
     /// Create a new instance of an [`Retriever`].
     pub fn new(lookup: &'a L, items: &'a I) -> Self {
@@ -121,7 +124,7 @@ where
 
 impl<'a, L, I, Q> Deref for Retriever<'a, L, I, Q>
 where
-    L: Lookup<Q>,
+    L: LookupExt,
 {
     type Target = L::Extension<'a>;
 

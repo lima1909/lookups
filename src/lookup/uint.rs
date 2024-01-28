@@ -13,7 +13,9 @@
 //!
 //! - the finding of an `Key` is very fast (you can __directly__ jump to the `Key`)
 //!
-use crate::lookup::store::{KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon};
+use crate::lookup::store::{
+    KeyPosition, Lookup, LookupExt, MultiKeyPositon, Store, UniqueKeyPositon,
+};
 use std::marker::PhantomData;
 
 /// Implementation for a `UIntLookup` with unique `Position`.
@@ -36,13 +38,6 @@ where
     P: KeyPosition<X>,
 {
     type Pos = X;
-    type Extension<'a> = UIntLookupExt<'a, P, K, X>
-    where
-        Self: 'a;
-
-    fn ext(&self) -> Self::Extension<'_> {
-        UIntLookupExt(self)
-    }
 
     fn key_exist(&self, key: K) -> bool {
         matches!(self.inner.get(key.into()), Some(Some(_)))
@@ -52,6 +47,16 @@ where
             Some(Some((_, p))) => p.as_slice(),
             _ => &[],
         }
+    }
+}
+
+impl<P, K, X> LookupExt for UIntLookup<P, K, X> {
+    type Extension<'a> = UIntLookupExt<'a, P, K, X>
+    where
+        Self: 'a;
+
+    fn ext(&self) -> Self::Extension<'_> {
+        UIntLookupExt(self)
     }
 }
 

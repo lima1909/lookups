@@ -4,7 +4,7 @@
 //! - all advantages, which has a hashing procedure
 //!
 use crate::{
-    lookup::store::{KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon},
+    lookup::store::{KeyPosition, Lookup, LookupExt, MultiKeyPositon, Store, UniqueKeyPositon},
     HashMap,
 };
 use std::{borrow::Borrow, hash::Hash, marker::PhantomData};
@@ -27,13 +27,6 @@ where
     P: KeyPosition<X>,
 {
     type Pos = X;
-    type Extension<'a> = MapLookupExt<'a, P, K>
-    where
-        Self: 'a;
-
-    fn ext(&self) -> Self::Extension<'_> {
-        MapLookupExt(&self.0)
-    }
 
     fn key_exist(&self, key: &Q) -> bool {
         self.0.contains_key(key)
@@ -44,6 +37,19 @@ where
             Some(p) => p.as_slice(),
             None => &[],
         }
+    }
+}
+
+impl<P, K, X> LookupExt for MapLookup<P, K, X>
+where
+    P: KeyPosition<X>,
+{
+    type Extension<'a> = MapLookupExt<'a, P, K>
+    where
+        Self: 'a;
+
+    fn ext(&self) -> Self::Extension<'_> {
+        MapLookupExt(&self.0)
     }
 }
 
@@ -112,5 +118,14 @@ mod tests {
             idx.pos_by_many_keys(["a", "b", "-", "s"])
                 .collect::<Vec<_>>()
         );
+
+        use std::collections::HashSet;
+
+        let keys = idx.ext().keys().cloned().collect::<HashSet<_>>();
+        assert_eq!(4, keys.len());
+        assert!(keys.contains("a"));
+        assert!(keys.contains("b"));
+        assert!(keys.contains("c"));
+        assert!(keys.contains("s"));
     }
 }

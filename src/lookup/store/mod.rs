@@ -37,13 +37,6 @@ pub trait Store {
 ///
 pub trait Lookup<Q> {
     type Pos;
-    type Extension<'a>
-    where
-        Self: 'a;
-
-    /// Is an extension for the `Lookup` implementation.
-    /// The `Extiesion` provides `Lookup` specific capability.
-    fn ext(&self) -> Self::Extension<'_>;
 
     /// Returns all known positions for a given `Key`.
     /// If the `Key` not exist, than is the slice empty.
@@ -68,6 +61,17 @@ pub trait Lookup<Q> {
     {
         Positions::new(self, keys.into_iter())
     }
+}
+
+/// Is an extension for the `Lookup` implementation.
+/// The `Extiesion` provides for this `Lookup` implementation specific capability.
+pub trait LookupExt {
+    type Extension<'a>
+    where
+        Self: 'a;
+
+    /// Create and returns the `Extiesion`.
+    fn ext(&self) -> Self::Extension<'_>;
 }
 
 /// `Positions` is an `Iterator` for the result from [`Lookup::pos_by_many_keys()`].
@@ -194,11 +198,6 @@ mod tests {
         Q: Hash + Eq + ?Sized,
     {
         type Pos = usize;
-        type Extension<'a> = ()
-        where
-            Self: 'a;
-
-        fn ext(&self) -> Self::Extension<'_> {}
 
         fn pos_by_key(&self, key: &Q) -> &[Self::Pos] {
             match self.idx.get(key) {

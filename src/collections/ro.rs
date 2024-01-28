@@ -4,7 +4,7 @@
 //!
 
 use super::Retriever;
-use crate::lookup::store::{Lookup, Store, ToStore};
+use crate::lookup::store::{Lookup, LookupExt, Store, ToStore};
 use std::ops::Deref;
 
 /// [`LVec`] is a read only lookup extenstion for a [`std::vec::Vec`].
@@ -65,7 +65,7 @@ impl<S, I> LVec<S, I> {
 
     pub fn lkup<Q>(&self) -> Retriever<'_, S, Vec<I>, Q>
     where
-        S: Lookup<Q, Pos = usize>,
+        S: Lookup<Q, Pos = usize> + LookupExt,
     {
         Retriever::new(&self.store, &self.items)
     }
@@ -139,7 +139,7 @@ impl<S, K, V> LHashMap<S, K, V> {
 
     pub fn lkup<Q>(&self) -> Retriever<'_, S, crate::HashMap<K, V>, Q>
     where
-        S: Lookup<Q, Pos = K>,
+        S: Lookup<Q, Pos = K> + LookupExt,
     {
         Retriever::new(&self.store, &self.items)
     }
