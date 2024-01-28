@@ -26,20 +26,20 @@ use std::ops::Deref;
 ///     Person{id: 2, name: "Jasmin".into()},
 ///     ];
 ///
-/// let map = LVec::<UniqueUIntLookup, _>::new(|p| p.id, data);
+/// let vec = LVec::<UniqueUIntLookup, _>::new(|p| p.id, data);
 ///
-/// assert!(map.lookup().contains_key(2)); // lookup with a given Key
+/// assert!(vec.lkup().contains_key(2)); // lookup with a given Key
 ///
 /// assert_eq!(
 ///     &Person{id: 5, name:  "Mario".into()},
 ///     // get a Person by an given Key
-///     map.lookup().get_by_key(5).next().unwrap()
+///     vec.lkup().get_by_key(5).next().unwrap()
 /// );
 ///
 /// assert_eq!(
 ///     vec![&Person{id: 0, name:  "Paul".into()}, &Person{id: 2, name:  "Jasmin".into()}],
 ///     // get many a Person by an many given Key
-///     map.lookup().get_by_many_keys([0, 2]).collect::<Vec<_>>(),
+///     vec.lkup().get_by_many_keys([0, 2]).collect::<Vec<_>>(),
 /// );
 /// ```
 ///
@@ -63,7 +63,7 @@ impl<S, I> LVec<S, I> {
         }
     }
 
-    pub fn lookup<Q>(&self) -> Retriever<'_, S, Vec<I>, Q>
+    pub fn lkup<Q>(&self) -> Retriever<'_, S, Vec<I>, Q>
     where
         S: Lookup<Q, Pos = usize>,
     {
@@ -101,18 +101,18 @@ impl<S, T> Deref for LVec<S, T> {
 /// let map = LHashMap::<UniqueUIntLookup<_, _>, _, _>::new(|p| p.id, data);
 ///
 /// assert!(map.contains_key("Paul"));     // conventionally HashMap access with String - Key
-/// assert!(map.lookup().contains_key(2)); // lookup with usize - Key
+/// assert!(map.lkup().contains_key(2)); // lookup with usize - Key
 ///
 /// assert_eq!(
 ///     &Person{id: 5, name:  "Mario".into()},
 ///     // get a Person by an given Key
-///     map.lookup().get_by_key(5).next().unwrap()
+///     map.lkup().get_by_key(5).next().unwrap()
 /// );
 ///
 /// assert_eq!(
 ///     vec![&Person{id: 0, name:  "Paul".into()}, &Person{id: 2, name:  "Jasmin".into()}],
-///     // get many a Person by an many given Key
-///     map.lookup().get_by_many_keys([0, 2]).collect::<Vec<_>>(),
+///     // get many Persons by given many Keys
+///     map.lkup().get_by_many_keys([0, 2]).collect::<Vec<_>>(),
 /// );
 /// ```
 ///
@@ -137,7 +137,7 @@ impl<S, K, V> LHashMap<S, K, V> {
         }
     }
 
-    pub fn lookup<Q>(&self) -> Retriever<'_, S, crate::HashMap<K, V>, Q>
+    pub fn lkup<Q>(&self) -> Retriever<'_, S, crate::HashMap<K, V>, Q>
     where
         S: Lookup<Q, Pos = K>,
     {
@@ -182,8 +182,8 @@ mod tests {
 
         assert!(m.contains_key("BMW"));
 
-        assert!(m.lookup().contains_key(1));
-        assert!(!m.lookup().contains_key(1_000));
+        assert!(m.lkup().contains_key(1));
+        assert!(!m.lkup().contains_key(1_000));
     }
 
     #[test]
@@ -191,7 +191,7 @@ mod tests {
         let items = vec![Car(99, "Audi".into()), Car(1, "BMW".into())];
         let v = LVec::<UniqueUIntLookup<u16, _>, _>::new(Car::id, items);
 
-        let l = v.lookup();
+        let l = v.lkup();
 
         assert!(l.contains_key(1));
         assert!(l.contains_key(99));
@@ -212,10 +212,10 @@ mod tests {
             l.get_by_many_keys([1, 99]).collect::<Vec<_>>()
         );
 
-        assert_eq!(1, v.lookup().min_key().unwrap());
-        assert_eq!(99, v.lookup().max_key().unwrap());
+        assert_eq!(1, v.lkup().min_key().unwrap());
+        assert_eq!(99, v.lkup().max_key().unwrap());
 
-        assert_eq!(vec![1, 99], v.lookup().keys().collect::<Vec<_>>());
+        assert_eq!(vec![1, 99], v.lkup().keys().collect::<Vec<_>>());
     }
 
     #[test]
@@ -223,7 +223,7 @@ mod tests {
         let items = vec![Car(99, "Audi".into()), Car(0, "BMW".into())];
         let v = LVec::<UniqueMapLookup, _>::new(Car::name, items);
 
-        let l = v.lookup();
+        let l = v.lkup();
         assert!(l.contains_key("Audi"));
         assert!(!l.contains_key("VW"));
 
@@ -238,7 +238,7 @@ mod tests {
         );
 
         let keys = v
-            .lookup::<&str>()
+            .lkup::<&str>()
             .keys()
             .cloned()
             .collect::<std::collections::HashSet<_>>();

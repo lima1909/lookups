@@ -46,8 +46,8 @@ where
     ///
     /// let v = LVec::<MultiUIntLookup, _>::new(|c| c.0, cars);
     ///
-    /// assert!(v.lookup().contains_key(1));
-    /// assert!(!v.lookup().contains_key(99));
+    /// assert!(v.lkup().contains_key(1));
+    /// assert!(!v.lkup().contains_key(99));
     /// ```
     pub fn contains_key(&self, key: Q) -> bool {
         self.lookup.key_exist(key)
@@ -72,7 +72,7 @@ where
     ///
     /// let v = LVec::<MultiUIntLookup, _>::new(Car::id, cars);
     ///
-    /// assert_eq!(vec![&Car(1, "Audi".into())], v.lookup().get_by_key(1).collect::<Vec<_>>());
+    /// assert_eq!(vec![&Car(1, "Audi".into())], v.lkup().get_by_key(1).collect::<Vec<_>>());
     /// ```
     pub fn get_by_key(&self, key: Q) -> impl Iterator<Item = &I::Output>
     where
@@ -107,7 +107,7 @@ where
     ///
     /// assert_eq!(
     ///     vec![&Car(5, "BMW".into()), &Car(1, "Audi".into())],
-    ///     v.lookup().get_by_many_keys([5, 1]).collect::<Vec<_>>()
+    ///     v.lkup().get_by_many_keys([5, 1]).collect::<Vec<_>>()
     /// );
     /// ```
     pub fn get_by_many_keys<It>(&self, keys: It) -> impl Iterator<Item = &I::Output>

@@ -196,6 +196,45 @@ impl<P, K, X> UIntLookup<P, K, X> {
 mod tests {
     use super::*;
 
+    #[test]
+    fn gender() {
+        #[derive(Debug, Clone, PartialEq)]
+        enum Gender {
+            Female,
+            Male,
+            None,
+        }
+
+        impl From<Gender> for usize {
+            fn from(gender: Gender) -> Self {
+                match gender {
+                    Gender::Female => 0,
+                    Gender::Male => 1,
+                    Gender::None => 2,
+                }
+            }
+        }
+
+        use Gender::*;
+
+        let mut idx = MultiUIntLookup::<Gender, _>::with_capacity(10);
+
+        idx.insert(Female, 10);
+        idx.insert(Female, 2);
+        idx.insert(Male, 1);
+        idx.insert(None, 0);
+
+        assert_eq!(Some(Female), idx.ext().min_key());
+        assert_eq!(Some(None), idx.ext().max_key());
+
+        assert_eq!(
+            vec![Female, Male, None],
+            idx.ext().keys().collect::<Vec<_>>()
+        );
+
+        assert_eq!(&[2, 10], idx.pos_by_key(Female));
+    }
+
     mod min_max_keys {
         use super::*;
 
