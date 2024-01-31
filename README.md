@@ -44,10 +44,10 @@ let cars = [
     (String::from("VW"),   Car{id: 2, name: "VW".into()}),
 ];
 
-use lookups::{collections::ro::LHashMap, lookup::UniqueIndex};
+use lookups::{collections::ro::LHashMap, lookup::UniqueIndexLookup};
 
 // create a new Lookup HashMap: LHashMap with a UniqueIndex
-let map = LHashMap::<UniqueIndex<_, _>, _, _>::new(|c| c.id, cars);
+let map = LHashMap::<UniqueIndexLookup<_, _>, _, _>::new(|c| c.id, cars);
 
 assert!(map.contains_key("VW"));       // conventionally HashMap access with Key (String)
 assert!(map.lkup().contains_key(2));   // lookup with Key (id: usize)
