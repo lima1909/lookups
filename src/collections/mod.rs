@@ -39,7 +39,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use lookups::lookup::MultiUIntLookup;
+    /// use lookups::lookup::MultiIndexLookup;
     /// use lookups::collections::ro::LVec;
     ///
     /// #[derive(Debug, PartialEq)]
@@ -47,7 +47,7 @@ where
     ///
     /// let cars = vec![Car(5, "BMW".into()), Car(1, "Audi".into())];
     ///
-    /// let v = LVec::<MultiUIntLookup, _>::new(|c| c.0, cars);
+    /// let v = LVec::<MultiIndexLookup, _>::new(|c| c.0, cars);
     ///
     /// assert!(v.lkup().contains_key(1));
     /// assert!(!v.lkup().contains_key(99));
@@ -61,7 +61,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use lookups::lookup::MultiUIntLookup;
+    /// use lookups::lookup::MultiIndexLookup;
     /// use lookups::collections::ro::LVec;
     ///
     /// #[derive(Debug, PartialEq)]
@@ -73,7 +73,7 @@ where
     ///
     /// let cars = vec![Car(5, "BMW".into()), Car(1, "Audi".into())];
     ///
-    /// let v = LVec::<MultiUIntLookup, _>::new(Car::id, cars);
+    /// let v = LVec::<MultiIndexLookup, _>::new(Car::id, cars);
     ///
     /// assert_eq!(vec![&Car(1, "Audi".into())], v.lkup().get_by_key(1).collect::<Vec<_>>());
     /// ```
@@ -94,7 +94,7 @@ where
     /// # Example:
     ///
     /// ```
-    /// use lookups::lookup::MultiUIntLookup;
+    /// use lookups::lookup::MultiIndexLookup;
     /// use lookups::collections::ro::LVec;
     ///
     /// #[derive(Debug, PartialEq)]
@@ -106,7 +106,7 @@ where
     ///
     /// let cars = vec![Car(5, "BMW".into()), Car(1, "Audi".into())];
     ///
-    /// let v = LVec::<MultiUIntLookup, _>::new(Car::id, cars);
+    /// let v = LVec::<MultiIndexLookup, _>::new(Car::id, cars);
     ///
     /// assert_eq!(
     ///     vec![&Car(5, "BMW".into()), &Car(1, "Audi".into())],

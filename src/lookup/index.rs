@@ -1,11 +1,12 @@
-//! The `uint` is a lookup which are using the _index_ position (the `Key`) in a `Vec` find all `Position`s.
+//! The module contains lookups which are using the _index_ position (the `Key`) in a `Vec` find all `Position`s.
 //!
 //! This lookup is well suited for __consecutive numbers__,
 //! which starts by `0` or `1`, and do __not__ have any great __gaps__ in beetween.
+//! The `Key` musst implement the trait: `Into<usize>`.
 //!
 //! Gaps are a disadvantage by:
-//! - inserting new `Key`s (the Vec mus grow strongly: [`UIntLookup::insert`])
-//! - and by getting all `Key`s with [`UIntLookupExt::keys`]
+//! - inserting new `Key`s (the Vec mus grow strongly: [`IndexLookup::insert`])
+//! - and by getting all `Key`s with [`IndexLookupExt::keys`]
 //!
 //! One use case for this conditions are __primary keys__ (e.g. artificially created).
 //!
@@ -18,21 +19,21 @@ use crate::lookup::store::{
 };
 use std::marker::PhantomData;
 
-/// Implementation for a `UIntLookup` with unique `Position`.
-pub type UniqueUIntLookup<K = usize, X = usize> = UIntLookup<UniqueKeyPositon<X>, K, X>;
-/// Implementation for a `UIntLookup` with multi `Position`s.
-pub type MultiUIntLookup<K = usize, X = usize> = UIntLookup<MultiKeyPositon<X>, K, X>;
+/// Implementation for a `Index` with unique `Position`.
+pub type UniqueIndexLookup<K = usize, X = usize> = IndexLookup<UniqueKeyPositon<X>, K, X>;
+/// Implementation for a `Index` with multi `Position`s.
+pub type MultiIndexLookup<K = usize, X = usize> = IndexLookup<MultiKeyPositon<X>, K, X>;
 
 /// `Key` is from type [`usize`] and the information are saved in a List (Store).
 #[derive(Debug)]
-pub struct UIntLookup<P, K = usize, X = usize> {
+pub struct IndexLookup<P, K = usize, X = usize> {
     inner: Vec<Option<(K, P)>>,
     min_index: usize,
     max_index: usize,
     _x: PhantomData<X>,
 }
 
-impl<P, K, X> Lookup<K> for UIntLookup<P, K, X>
+impl<P, K, X> Lookup<K> for IndexLookup<P, K, X>
 where
     K: Into<usize>,
     P: KeyPosition<X>,
@@ -50,17 +51,17 @@ where
     }
 }
 
-impl<P, K, X> LookupExt for UIntLookup<P, K, X> {
-    type Extension<'a> = UIntLookupExt<'a, P, K, X>
+impl<P, K, X> LookupExt for IndexLookup<P, K, X> {
+    type Extension<'a> = IndexLookupExt<'a, P, K, X>
     where
         Self: 'a;
 
     fn ext(&self) -> Self::Extension<'_> {
-        UIntLookupExt(self)
+        IndexLookupExt(self)
     }
 }
 
-impl<P, K, X> Store for UIntLookup<P, K, X>
+impl<P, K, X> Store for IndexLookup<P, K, X>
 where
     K: Into<usize> + Clone,
     P: KeyPosition<X> + Clone,
@@ -124,12 +125,12 @@ where
 
 /// Implementation for extending the [`Lookup`].
 ///
-pub struct UIntLookupExt<'a, P, K, X>(&'a UIntLookup<P, K, X>);
+pub struct IndexLookupExt<'a, P, K, X>(&'a IndexLookup<P, K, X>);
 
-/// The `UIntLookupExt` can be not the fastest.
+/// The `IndexExt` can be not the fastest.
 /// It depends, on how much gaps are between thes `Key`s.
 ///
-impl<'a, P, K, X> UIntLookupExt<'a, P, K, X>
+impl<'a, P, K, X> IndexLookupExt<'a, P, K, X>
 where
     K: Clone,
 {
@@ -158,7 +159,7 @@ where
 //
 // ----------- internal (private) helper implementation --------------------------
 //
-impl<P, K, X> UIntLookup<P, K, X> {
+impl<P, K, X> IndexLookup<P, K, X> {
     #[inline(always)]
     fn find_new_max_index(&self) -> usize {
         self.inner
@@ -222,7 +223,7 @@ mod tests {
 
         use Gender::*;
 
-        let mut idx = MultiUIntLookup::<Gender, _>::with_capacity(10);
+        let mut idx = MultiIndexLookup::<Gender, _>::with_capacity(10);
 
         idx.insert(Female, 10);
         idx.insert(Female, 2);
@@ -245,7 +246,7 @@ mod tests {
 
         #[test]
         fn by_insert() {
-            let mut idx = MultiUIntLookup::<usize, usize>::with_capacity(0);
+            let mut idx = MultiIndexLookup::<usize, usize>::with_capacity(0);
 
             // both not set
             assert_eq!(None, idx.ext().min_key());
@@ -296,7 +297,7 @@ mod tests {
 
         #[test]
         fn by_insertwith_capacity() {
-            let mut idx = UniqueUIntLookup::<usize, usize>::with_capacity(5);
+            let mut idx = MultiIndexLookup::<usize, usize>::with_capacity(5);
             // both not set
             assert_eq!(None, idx.ext().min_key());
             assert_eq!(None, idx.ext().max_key());
@@ -333,7 +334,7 @@ mod tests {
 
         #[test]
         fn by_delete() {
-            let mut idx = MultiUIntLookup::<usize, usize>::with_capacity(5);
+            let mut idx = MultiIndexLookup::<usize, usize>::with_capacity(5);
 
             // min/max not set
             assert_eq!(None, idx.ext().min_key());
@@ -391,7 +392,7 @@ mod tests {
 
     #[test]
     fn store_and_lookup() {
-        let mut idx = UniqueUIntLookup::<usize, usize>::with_capacity(5);
+        let mut idx = UniqueIndexLookup::<usize, usize>::with_capacity(5);
         idx.insert(0, 0);
         idx.insert(1, 1);
         idx.insert(2, 2);

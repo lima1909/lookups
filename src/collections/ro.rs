@@ -12,7 +12,7 @@ use std::ops::Deref;
 /// # Example
 ///
 /// ```
-/// use lookups::{collections::ro::LVec, lookup::UniqueUIntLookup};
+/// use lookups::{collections::ro::LVec, lookup::UniqueHashLookup};
 ///
 /// #[derive(PartialEq, Debug)]
 /// struct Person {
@@ -26,20 +26,20 @@ use std::ops::Deref;
 ///     Person{id: 2, name: "Jasmin".into()},
 ///     ];
 ///
-/// let vec = LVec::<UniqueUIntLookup, _>::new(|p| p.id, data);
+/// let vec = LVec::<UniqueHashLookup, _>::new(|p| p.name.clone(), data);
 ///
-/// assert!(vec.lkup().contains_key(2)); // lookup with a given Key
+/// assert!(vec.lkup().contains_key("Paul")); // lookup with a given Key
 ///
 /// assert_eq!(
 ///     &Person{id: 5, name:  "Mario".into()},
-///     // get a Person by an given Key
-///     vec.lkup().get_by_key(5).next().unwrap()
+///     // get a Person by an given Key: "Mario"
+///     vec.lkup().get_by_key("Mario").next().unwrap()
 /// );
 ///
 /// assert_eq!(
 ///     vec![&Person{id: 0, name:  "Paul".into()}, &Person{id: 2, name:  "Jasmin".into()}],
 ///     // get many a Person by an many given Key
-///     vec.lkup().get_by_many_keys([0, 2]).collect::<Vec<_>>(),
+///     vec.lkup().get_by_many_keys(["Paul", "Jasmin"]).collect::<Vec<_>>(),
 /// );
 /// ```
 ///
@@ -84,7 +84,7 @@ impl<S, T> Deref for LVec<S, T> {
 /// # Example
 ///
 /// ```
-/// use lookups::{collections::ro::LHashMap, lookup::UniqueUIntLookup};
+/// use lookups::{collections::ro::LHashMap, lookup::UniqueIndexLookup};
 ///
 /// #[derive(PartialEq, Debug)]
 /// struct Person {
@@ -98,7 +98,7 @@ impl<S, T> Deref for LVec<S, T> {
 ///     (String::from("Jasmin"), Person{id: 2, name: "Jasmin".into()}),
 ///     ];
 ///
-/// let map = LHashMap::<UniqueUIntLookup<_, _>, _, _>::new(|p| p.id, data);
+/// let map = LHashMap::<UniqueIndexLookup<_, _>, _, _>::new(|p| p.id, data);
 ///
 /// assert!(map.contains_key("Paul"));     // conventionally HashMap access with String - Key
 /// assert!(map.lkup().contains_key(2)); // lookup with usize - Key
@@ -155,7 +155,7 @@ impl<S, K, V> Deref for LHashMap<S, K, V> {
 
 #[cfg(test)]
 mod tests {
-    use crate::lookup::{MultiUIntLookup, UniqueMapLookup, UniqueUIntLookup};
+    use crate::lookup::{MultiIndexLookup, UniqueHashLookup, UniqueIndexLookup};
 
     use super::*;
 
@@ -178,7 +178,7 @@ mod tests {
             ("Audi".into(), Car(99, "Audi".into())),
             ("BMW".into(), Car(1, "BMW".into())),
         ]);
-        let m = LHashMap::<MultiUIntLookup<u16, String>, _, _>::new(Car::id, items);
+        let m = LHashMap::<MultiIndexLookup<u16, String>, _, _>::new(Car::id, items);
 
         assert!(m.contains_key("BMW"));
 
@@ -189,7 +189,7 @@ mod tests {
     #[test]
     fn lvec_u16() {
         let items = vec![Car(99, "Audi".into()), Car(1, "BMW".into())];
-        let v = LVec::<UniqueUIntLookup<u16, _>, _>::new(Car::id, items);
+        let v = LVec::<UniqueIndexLookup<u16, _>, _>::new(Car::id, items);
 
         let l = v.lkup();
 
@@ -221,7 +221,7 @@ mod tests {
     #[test]
     fn lvec_string() {
         let items = vec![Car(99, "Audi".into()), Car(0, "BMW".into())];
-        let v = LVec::<UniqueMapLookup, _>::new(Car::name, items);
+        let v = LVec::<UniqueHashLookup, _>::new(Car::name, items);
 
         let l = v.lkup();
         assert!(l.contains_key("Audi"));

@@ -32,8 +32,6 @@ The fast access can be achieved by using different methods, like;
 ### How can I use it?
 
 ```rust
-use lookups::{collections::ro::LHashMap, lookup::UniqueUIntLookup};
-
 #[derive(PartialEq, Debug)]
 struct Car {
     id: usize,
@@ -46,8 +44,10 @@ let cars = [
     (String::from("VW"),   Car{id: 2, name: "VW".into()}),
 ];
 
-// create a new Lookup HashMap: LHashMap with a UniqueUIntLookup
-let map = LHashMap::<UniqueUIntLookup<_, _>, _, _>::new(|c| c.id, cars);
+use lookups::{collections::ro::LHashMap, lookup::UniqueIndex};
+
+// create a new Lookup HashMap: LHashMap with a UniqueIndex
+let map = LHashMap::<UniqueIndex<_, _>, _, _>::new(|c| c.id, cars);
 
 assert!(map.contains_key("VW"));       // conventionally HashMap access with Key (String)
 assert!(map.lkup().contains_key(2));   // lookup with Key (id: usize)

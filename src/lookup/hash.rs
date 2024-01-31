@@ -9,18 +9,18 @@ use crate::{
 };
 use std::{borrow::Borrow, hash::Hash, marker::PhantomData};
 
-/// Implementation for a `MapLookup` with unique `Position`.
-pub type UniqueMapLookup<K = String, X = usize> = MapLookup<UniqueKeyPositon<X>, K, X>;
-/// Implementation for a `MapLookup` with multi `Position`s.
-pub type MultiMapLookup<K = String, X = usize> = MapLookup<MultiKeyPositon<X>, K, X>;
+/// Implementation for a `HashLookup` with unique `Position`.
+pub type UniqueHashLookup<K = String, X = usize> = HashLookup<UniqueKeyPositon<X>, K, X>;
+/// Implementation for a `HashLookup` with multi `Position`s.
+pub type MultiHashLookup<K = String, X = usize> = HashLookup<MultiKeyPositon<X>, K, X>;
 
-/// `MapLookup` is an implementation for an hash index.
+/// `HashLookup` is an implementation for an hash index.
 ///
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct MapLookup<P: KeyPosition<X>, K = String, X = usize>(HashMap<K, P>, PhantomData<X>);
+pub struct HashLookup<P: KeyPosition<X>, K = String, X = usize>(HashMap<K, P>, PhantomData<X>);
 
-impl<P, K, X, Q> Lookup<&Q> for MapLookup<P, K, X>
+impl<P, K, X, Q> Lookup<&Q> for HashLookup<P, K, X>
 where
     K: Borrow<Q> + Hash + Eq,
     Q: Hash + Eq + ?Sized,
@@ -40,20 +40,20 @@ where
     }
 }
 
-impl<P, K, X> LookupExt for MapLookup<P, K, X>
+impl<P, K, X> LookupExt for HashLookup<P, K, X>
 where
     P: KeyPosition<X>,
 {
-    type Extension<'a> = MapLookupExt<'a, P, K>
+    type Extension<'a> = HashLookupExt<'a, P, K>
     where
         Self: 'a;
 
     fn ext(&self) -> Self::Extension<'_> {
-        MapLookupExt(&self.0)
+        HashLookupExt(&self.0)
     }
 }
 
-impl<P, K, X> Store for MapLookup<P, K, X>
+impl<P, K, X> Store for HashLookup<P, K, X>
 where
     K: Hash + Eq,
     P: KeyPosition<X>,
@@ -79,15 +79,15 @@ where
     }
 
     fn with_capacity(capacity: usize) -> Self {
-        MapLookup(HashMap::with_capacity(capacity), PhantomData)
+        HashLookup(HashMap::with_capacity(capacity), PhantomData)
     }
 }
 
 /// Implementation for extending the [`Lookup`].
 ///
-pub struct MapLookupExt<'a, P, K>(&'a HashMap<K, P>);
+pub struct HashLookupExt<'a, P, K>(&'a HashMap<K, P>);
 
-impl<'a, P, K> MapLookupExt<'a, P, K> {
+impl<'a, P, K> HashLookupExt<'a, P, K> {
     pub fn keys(&self) -> impl Iterator<Item = &'_ K> {
         self.0.keys()
     }
@@ -99,7 +99,7 @@ mod tests {
 
     #[test]
     fn store_and_lookup() {
-        let mut idx = UniqueMapLookup::with_capacity(5);
+        let mut idx = UniqueHashLookup::with_capacity(5);
         idx.insert(String::from("a"), 0);
         idx.insert(String::from("b"), 1);
         idx.insert(String::from("c"), 2);

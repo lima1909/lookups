@@ -16,8 +16,6 @@
 //! ## How can I use it?
 //!
 //!```
-//! use lookups::{collections::ro::LHashMap, lookup::UniqueUIntLookup};
-//!
 //! #[derive(PartialEq, Debug)]
 //! struct Car {
 //!     id: usize,
@@ -30,8 +28,10 @@
 //!     (String::from("VW"),   Car{id: 2, name: "VW".into()}),
 //! ];
 //!
-//! // create a new Lookup HashMap: LHashMap with a UniqueUIntLookup
-//! let map = LHashMap::<UniqueUIntLookup<_, _>, _, _>::new(|c| c.id, cars);
+//! use lookups::{collections::ro::LHashMap, lookup::UniqueIndexLookup};
+//!
+//! // create a new Lookup HashMap: LHashMap with a UniqueIndex
+//! let map = LHashMap::<UniqueIndexLookup<_, _>, _, _>::new(|c| c.id, cars);
 //!
 //! assert!(map.contains_key("VW"));       // conventionally HashMap access with Key (String)
 //! assert!(map.lkup().contains_key(2));   // lookup with Key (id: usize)
