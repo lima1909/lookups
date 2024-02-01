@@ -8,8 +8,6 @@
 [crates.io]: https://crates.io/crates/lookups
 
 
-__Coming soon ...__
-
 Improve the data retrieval operations for collections.
 
 # Overview
