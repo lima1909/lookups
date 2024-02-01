@@ -9,7 +9,7 @@ documentation = "https://docs.rs/lookups/"
 repository = "https://github.com/lima1909/lookups"
 keywords = ["filter", "query", "index", "search", "collection"]
 categories = ["data-structures", "caching"]
-
+exclude = [".github", ".git", "Cargo.lock"]
 
 
 [dependencies]
