@@ -1,37 +1,20 @@
 //! The `collections` module contains the collections implementations which are using the lookups.
 //!
 
-use crate::lookup::{
-    store::{Lookup, LookupExt},
-    Itemer,
-};
-use std::{marker::PhantomData, ops::Deref};
+use crate::lookup::{store::Lookup, Itemer};
 
 pub mod ro;
 
 /// A `Retriever` is the main interface for get Items by an given `Lookup`.
-pub struct Retriever<'a, L, I, Q>
-where
-    L: LookupExt,
-{
+pub struct Retriever<'a, L, I> {
     lookup: &'a L,
-    lookup_ext: L::Extension<'a>,
     items: &'a I,
-    _q: PhantomData<Q>,
 }
 
-impl<'a, L, I, Q> Retriever<'a, L, I, Q>
-where
-    L: Lookup<Q> + LookupExt,
-{
+impl<'a, L, I> Retriever<'a, L, I> {
     /// Create a new instance of an [`Retriever`].
     pub fn new(lookup: &'a L, items: &'a I) -> Self {
-        Self {
-            lookup,
-            lookup_ext: lookup.ext(),
-            items,
-            _q: PhantomData,
-        }
+        Self { lookup, items }
     }
 
     /// Checks whether the `Key` in the collection exists.
@@ -52,7 +35,10 @@ where
     /// assert!(v.lkup().contains_key(1));
     /// assert!(!v.lkup().contains_key(99));
     /// ```
-    pub fn contains_key(&self, key: Q) -> bool {
+    pub fn contains_key<Q>(&self, key: Q) -> bool
+    where
+        L: Lookup<Q>,
+    {
         self.lookup.key_exist(key)
     }
 
@@ -77,9 +63,11 @@ where
     ///
     /// assert_eq!(vec![&Car(1, "Audi".into())], v.lkup().get_by_key(1).collect::<Vec<_>>());
     /// ```
-    pub fn get_by_key(&self, key: Q) -> impl Iterator<Item = &I::Output>
+    pub fn get_by_key<Q>(&self, key: Q) -> impl Iterator<Item = &I::Output>
     where
         I: Itemer<L::Pos>,
+        L: Lookup<Q>,
+        Q: 'a,
     {
         self.items.items(self.lookup.pos_by_key(key).iter())
     }
@@ -113,22 +101,24 @@ where
     ///     v.lkup().get_by_many_keys([5, 1]).collect::<Vec<_>>()
     /// );
     /// ```
-    pub fn get_by_many_keys<It>(&self, keys: It) -> impl Iterator<Item = &I::Output>
+    pub fn get_by_many_keys<It, Q>(&self, keys: It) -> impl Iterator<Item = &I::Output>
     where
         It: IntoIterator<Item = Q> + 'a,
         I: Itemer<L::Pos>,
+        L: Lookup<Q>,
+        Q: 'a,
     {
         self.items.items(self.lookup.pos_by_many_keys(keys))
     }
 }
 
-impl<'a, L, I, Q> Deref for Retriever<'a, L, I, Q>
+impl<L, I> std::ops::Deref for Retriever<'_, L, I>
 where
-    L: LookupExt,
+    L: std::ops::Deref,
 {
-    type Target = L::Extension<'a>;
+    type Target = L::Target;
 
     fn deref(&self) -> &Self::Target {
-        &self.lookup_ext
+        self.lookup.deref()
     }
 }

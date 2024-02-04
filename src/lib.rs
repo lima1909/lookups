@@ -33,8 +33,10 @@
 //! // create a new Lookup HashMap: LHashMap with a UniqueIndex
 //! let map = LHashMap::<UniqueIndexLookup<_, _>, _, _>::new(|c| c.id, cars);
 //!
-//! assert!(map.contains_key("VW"));       // conventionally HashMap access with Key (String)
-//! assert!(map.lkup().contains_key(2));   // lookup with Key (id: usize)
+//! // conventionally HashMap access with Key (String)
+//! assert!(map.contains_key("VW"));
+//! // lookup with Key (id: usize)
+//! assert!(map.lkup().contains_key(2));
 //!
 //! assert_eq!(
 //!     &Car{id: 5, name: "Audi".into()},
@@ -43,7 +45,8 @@
 //! );
 //!
 //! assert_eq!(
-//!     vec![&Car{id: 0, name: "BMW".into()}, &Car{id: 2, name: "VW".into()}],
+//!     vec![&Car{id: 0, name: "BMW".into()},
+//!          &Car{id: 2, name: "VW".into()}],
 //!     // get many Cars by given many Keys
 //!     map.lkup().get_by_many_keys([0, 2]).collect::<Vec<_>>(),
 //! );

@@ -63,17 +63,6 @@ pub trait Lookup<Q> {
     }
 }
 
-/// Is an extension for the `Lookup` implementation.
-/// The `Extiesion` provides for this `Lookup` implementation specific capability.
-pub trait LookupExt {
-    type Extension<'a>
-    where
-        Self: 'a;
-
-    /// Create and returns the `Extiesion`.
-    fn ext(&self) -> Self::Extension<'_>;
-}
-
 /// `Positions` is an `Iterator` for the result from [`Lookup::pos_by_many_keys()`].
 pub struct Positions<'a, L: Lookup<Q>, Q, Keys> {
     lookup: &'a L,

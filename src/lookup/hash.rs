@@ -4,10 +4,10 @@
 //! - all advantages, which has a hashing procedure
 //!
 use crate::{
-    lookup::store::{KeyPosition, Lookup, LookupExt, MultiKeyPositon, Store, UniqueKeyPositon},
+    lookup::store::{KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon},
     HashMap,
 };
-use std::{borrow::Borrow, hash::Hash, marker::PhantomData};
+use std::{borrow::Borrow, hash::Hash, marker::PhantomData, ops::Deref};
 
 /// Implementation for a `HashLookup` with unique `Position`.
 pub type UniqueHashLookup<K = String, X = usize> = HashLookup<UniqueKeyPositon<X>, K, X>;
@@ -37,19 +37,6 @@ where
             Some(p) => p.as_slice(),
             None => &[],
         }
-    }
-}
-
-impl<P, K, X> LookupExt for HashLookup<P, K, X>
-where
-    P: KeyPosition<X>,
-{
-    type Extension<'a> = HashLookupExt<'a, P, K>
-    where
-        Self: 'a;
-
-    fn ext(&self) -> Self::Extension<'_> {
-        HashLookupExt(&self.0)
     }
 }
 
@@ -84,12 +71,23 @@ where
 }
 
 /// Implementation for extending the [`Lookup`].
-///
-pub struct HashLookupExt<'a, P, K>(&'a HashMap<K, P>);
+#[repr(transparent)]
+pub struct HashLookupExt<P: KeyPosition<X>, K, X>(HashLookup<P, K, X>);
 
-impl<'a, P, K> HashLookupExt<'a, P, K> {
+impl<P: KeyPosition<X>, K, X> Deref for HashLookup<P, K, X> {
+    type Target = HashLookupExt<P, K, X>;
+
+    fn deref(&self) -> &Self::Target {
+        // SAFTY:
+        // self is a valid pointer and
+        // HashLookupExt is repr(transparent) thus has the same memory layout like HashLookup
+        unsafe { &*(self as *const HashLookup<P, K, X> as *const HashLookupExt<P, K, X>) }
+    }
+}
+
+impl<P: KeyPosition<X>, K, X> HashLookupExt<P, K, X> {
     pub fn keys(&self) -> impl Iterator<Item = &'_ K> {
-        self.0.keys()
+        self.0 .0.keys()
     }
 }
 
@@ -121,7 +119,7 @@ mod tests {
 
         use std::collections::HashSet;
 
-        let keys = idx.ext().keys().cloned().collect::<HashSet<_>>();
+        let keys = idx.keys().cloned().collect::<HashSet<_>>();
         assert_eq!(4, keys.len());
         assert!(keys.contains("a"));
         assert!(keys.contains("b"));

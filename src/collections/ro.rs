@@ -4,7 +4,7 @@
 //!
 
 use super::Retriever;
-use crate::lookup::store::{Lookup, LookupExt, Store, ToStore};
+use crate::lookup::store::{Store, ToStore};
 use std::ops::Deref;
 
 /// [`LVec`] is a read only lookup extenstion for a [`std::vec::Vec`].
@@ -63,10 +63,7 @@ impl<S, I> LVec<S, I> {
         }
     }
 
-    pub fn lkup<Q>(&self) -> Retriever<'_, S, Vec<I>, Q>
-    where
-        S: Lookup<Q, Pos = usize> + LookupExt,
-    {
+    pub fn lkup(&self) -> Retriever<'_, S, Vec<I>> {
         Retriever::new(&self.store, &self.items)
     }
 }
@@ -137,10 +134,7 @@ impl<S, K, V> LHashMap<S, K, V> {
         }
     }
 
-    pub fn lkup<Q>(&self) -> Retriever<'_, S, crate::HashMap<K, V>, Q>
-    where
-        S: Lookup<Q, Pos = K> + LookupExt,
-    {
+    pub fn lkup(&self) -> Retriever<'_, S, crate::HashMap<K, V>> {
         Retriever::new(&self.store, &self.items)
     }
 }
@@ -184,6 +178,10 @@ mod tests {
 
         assert!(m.lkup().contains_key(1));
         assert!(!m.lkup().contains_key(1_000));
+
+        m.lkup()
+            .keys()
+            .for_each(|key| assert!(m.lkup().contains_key(key)));
     }
 
     #[test]
@@ -191,25 +189,23 @@ mod tests {
         let items = vec![Car(99, "Audi".into()), Car(1, "BMW".into())];
         let v = LVec::<UniqueIndexLookup<u16, _>, _>::new(Car::id, items);
 
-        let l = v.lkup();
-
-        assert!(l.contains_key(1));
-        assert!(l.contains_key(99));
-        assert!(!l.contains_key(1_000));
+        assert!(v.lkup().contains_key(1));
+        assert!(v.lkup().contains_key(99));
+        assert!(!v.lkup().contains_key(1_000));
 
         assert_eq!(
             vec![&Car(1, "BMW".into())],
-            l.get_by_key(1).collect::<Vec<_>>()
+            v.lkup().get_by_key(1).collect::<Vec<_>>()
         );
         assert_eq!(
             vec![&Car(99, "Audi".into())],
-            l.get_by_key(99).collect::<Vec<_>>()
+            v.lkup().get_by_key(99).collect::<Vec<_>>()
         );
-        assert!(l.get_by_key(98).next().is_none());
+        assert!(v.lkup().get_by_key(98).next().is_none());
 
         assert_eq!(
             vec![&Car(1, "BMW".into()), &Car(99, "Audi".into())],
-            l.get_by_many_keys([1, 99]).collect::<Vec<_>>()
+            v.lkup().get_by_many_keys([1, 99]).collect::<Vec<_>>()
         );
 
         assert_eq!(1, v.lkup().min_key().unwrap());
@@ -223,22 +219,23 @@ mod tests {
         let items = vec![Car(99, "Audi".into()), Car(0, "BMW".into())];
         let v = LVec::<UniqueHashLookup, _>::new(Car::name, items);
 
-        let l = v.lkup();
-        assert!(l.contains_key("Audi"));
-        assert!(!l.contains_key("VW"));
+        assert!(v.lkup().contains_key("Audi"));
+        assert!(!v.lkup().contains_key("VW"));
 
         assert_eq!(
             vec![&Car(0, "BMW".into())],
-            l.get_by_key("BMW").collect::<Vec<_>>()
+            v.lkup().get_by_key("BMW").collect::<Vec<_>>()
         );
 
         assert_eq!(
             vec![&Car(99, "Audi".into()), &Car(0, "BMW".into())],
-            l.get_by_many_keys(["Audi", "BMW"]).collect::<Vec<_>>()
+            v.lkup()
+                .get_by_many_keys(["Audi", "BMW"])
+                .collect::<Vec<_>>()
         );
 
         let keys = v
-            .lkup::<&str>()
+            .lkup()
             .keys()
             .cloned()
             .collect::<std::collections::HashSet<_>>();
