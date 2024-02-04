@@ -1,8 +1,8 @@
 //! The `lokkup` module contains the structure for storing and accessing the lookup implementations.
 //!
 //! There are two kinds of `Positions`
-//! - Unique, there is exactly one `Position` (e.g: [`hash::UniqueHashLookup`], [`index::UniqueIndexLookup`])
-//! - Multi there are many `Positions` possible (e.g: [`hash::MultiHashLookup`], [`index::MultiIndexLookup`])
+//! - Unique, there is exactly one `Position` (e.g: [`hash::UniqueHash`], [`index::UniqueIndex`])
+//! - Multi there are many `Positions` possible (e.g: [`hash::MultiHash`], [`index::MultiIndex`])
 //!
 //! For the `Key`s exist to lookup implementations
 //! - hasing based lookup (the implementaion is a `HashMap`)  (e.g: [`hash::HashLookup`])
@@ -12,8 +12,8 @@ pub mod hash;
 pub mod index;
 pub mod store;
 
-pub use hash::{MultiHashLookup, UniqueHashLookup};
-pub use index::{MultiIndexLookup, UniqueIndexLookup};
+pub use hash::{MultiHash, UniqueHash};
+pub use index::{MultiIndex, UniqueIndex};
 
 use std::{borrow::Borrow, hash::Hash, marker::PhantomData};
 

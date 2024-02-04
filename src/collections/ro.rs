@@ -12,8 +12,6 @@ use std::ops::Deref;
 /// # Example
 ///
 /// ```
-/// use lookups::{collections::ro::LVec, lookup::UniqueHashLookup};
-///
 /// #[derive(PartialEq, Debug)]
 /// struct Person {
 ///     id: usize,
@@ -26,7 +24,9 @@ use std::ops::Deref;
 ///     Person{id: 2, name: "Jasmin".into()},
 ///     ];
 ///
-/// let vec = LVec::<UniqueHashLookup, _>::new(|p| p.name.clone(), data);
+/// use lookups::{collections::ro::LVec, lookup::UniqueHash};
+///
+/// let vec = LVec::<UniqueHash, _>::new(|p| p.name.clone(), data);
 ///
 /// assert!(vec.lkup().contains_key("Paul")); // lookup with a given Key
 ///
@@ -81,8 +81,6 @@ impl<S, T> Deref for LVec<S, T> {
 /// # Example
 ///
 /// ```
-/// use lookups::{collections::ro::LHashMap, lookup::UniqueIndexLookup};
-///
 /// #[derive(PartialEq, Debug)]
 /// struct Person {
 ///     id: usize,
@@ -95,7 +93,9 @@ impl<S, T> Deref for LVec<S, T> {
 ///     (String::from("Jasmin"), Person{id: 2, name: "Jasmin".into()}),
 ///     ];
 ///
-/// let map = LHashMap::<UniqueIndexLookup<_, _>, _, _>::new(|p| p.id, data);
+/// use lookups::{collections::ro::LHashMap, lookup::UniqueIndex};
+///
+/// let map = LHashMap::<UniqueIndex<_, _>, _, _>::new(|p| p.id, data);
 ///
 /// assert!(map.contains_key("Paul"));     // conventionally HashMap access with String - Key
 /// assert!(map.lkup().contains_key(2)); // lookup with usize - Key
@@ -149,7 +149,7 @@ impl<S, K, V> Deref for LHashMap<S, K, V> {
 
 #[cfg(test)]
 mod tests {
-    use crate::lookup::{MultiIndexLookup, UniqueHashLookup, UniqueIndexLookup};
+    use crate::lookup::{MultiIndex, UniqueHash, UniqueIndex};
 
     use super::*;
 
@@ -172,7 +172,7 @@ mod tests {
             ("Audi".into(), Car(99, "Audi".into())),
             ("BMW".into(), Car(1, "BMW".into())),
         ]);
-        let m = LHashMap::<MultiIndexLookup<u16, String>, _, _>::new(Car::id, items);
+        let m = LHashMap::<MultiIndex<u16, String>, _, _>::new(Car::id, items);
 
         assert!(m.contains_key("BMW"));
 
@@ -187,7 +187,7 @@ mod tests {
     #[test]
     fn lvec_u16() {
         let items = vec![Car(99, "Audi".into()), Car(1, "BMW".into())];
-        let v = LVec::<UniqueIndexLookup<u16, _>, _>::new(Car::id, items);
+        let v = LVec::<UniqueIndex<u16, _>, _>::new(Car::id, items);
 
         assert!(v.lkup().contains_key(1));
         assert!(v.lkup().contains_key(99));
@@ -217,7 +217,7 @@ mod tests {
     #[test]
     fn lvec_string() {
         let items = vec![Car(99, "Audi".into()), Car(0, "BMW".into())];
-        let v = LVec::<UniqueHashLookup, _>::new(Car::name, items);
+        let v = LVec::<UniqueHash, _>::new(Car::name, items);
 
         assert!(v.lkup().contains_key("Audi"));
         assert!(!v.lkup().contains_key("VW"));

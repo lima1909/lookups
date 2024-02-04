@@ -28,12 +28,12 @@
 //!     (String::from("VW"),   Car{id: 2, name: "VW".into()}),
 //! ];
 //!
-//! use lookups::{collections::ro::LHashMap, lookup::UniqueIndexLookup};
+//! use lookups::{collections::ro::LHashMap, lookup::UniqueIndex};
 //!
 //! // create a new Lookup HashMap: LHashMap with a UniqueIndex
-//! let map = LHashMap::<UniqueIndexLookup<_, _>, _, _>::new(|c| c.id, cars);
+//! let map = LHashMap::<UniqueIndex<_, _>, _, _>::new(|c| c.id, cars);
 //!
-//! // conventionally HashMap access with Key (String)
+//! // conventionally HashMap access with Key (name: String)
 //! assert!(map.contains_key("VW"));
 //! // lookup with Key (id: usize)
 //! assert!(map.lkup().contains_key(2));

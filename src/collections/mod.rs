@@ -22,7 +22,7 @@ impl<'a, L, I> Retriever<'a, L, I> {
     /// # Example
     ///
     /// ```
-    /// use lookups::lookup::MultiIndexLookup;
+    /// use lookups::lookup::MultiIndex;
     /// use lookups::collections::ro::LVec;
     ///
     /// #[derive(Debug, PartialEq)]
@@ -30,7 +30,7 @@ impl<'a, L, I> Retriever<'a, L, I> {
     ///
     /// let cars = vec![Car(5, "BMW".into()), Car(1, "Audi".into())];
     ///
-    /// let v = LVec::<MultiIndexLookup, _>::new(|c| c.0, cars);
+    /// let v = LVec::<MultiIndex, _>::new(|c| c.0, cars);
     ///
     /// assert!(v.lkup().contains_key(1));
     /// assert!(!v.lkup().contains_key(99));
@@ -47,7 +47,7 @@ impl<'a, L, I> Retriever<'a, L, I> {
     /// # Example
     ///
     /// ```
-    /// use lookups::lookup::MultiIndexLookup;
+    /// use lookups::lookup::MultiIndex;
     /// use lookups::collections::ro::LVec;
     ///
     /// #[derive(Debug, PartialEq)]
@@ -59,7 +59,7 @@ impl<'a, L, I> Retriever<'a, L, I> {
     ///
     /// let cars = vec![Car(5, "BMW".into()), Car(1, "Audi".into())];
     ///
-    /// let v = LVec::<MultiIndexLookup, _>::new(Car::id, cars);
+    /// let v = LVec::<MultiIndex, _>::new(Car::id, cars);
     ///
     /// assert_eq!(vec![&Car(1, "Audi".into())], v.lkup().get_by_key(1).collect::<Vec<_>>());
     /// ```
@@ -82,7 +82,7 @@ impl<'a, L, I> Retriever<'a, L, I> {
     /// # Example:
     ///
     /// ```
-    /// use lookups::lookup::MultiIndexLookup;
+    /// use lookups::lookup::MultiIndex;
     /// use lookups::collections::ro::LVec;
     ///
     /// #[derive(Debug, PartialEq)]
@@ -94,7 +94,7 @@ impl<'a, L, I> Retriever<'a, L, I> {
     ///
     /// let cars = vec![Car(5, "BMW".into()), Car(1, "Audi".into())];
     ///
-    /// let v = LVec::<MultiIndexLookup, _>::new(Car::id, cars);
+    /// let v = LVec::<MultiIndex, _>::new(Car::id, cars);
     ///
     /// assert_eq!(
     ///     vec![&Car(5, "BMW".into()), &Car(1, "Audi".into())],
