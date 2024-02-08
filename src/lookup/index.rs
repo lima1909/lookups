@@ -18,9 +18,9 @@ use crate::lookup::store::{KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKe
 use std::{marker::PhantomData, ops::Deref};
 
 /// Implementation for a `Index` with unique `Position`.
-pub type UniqueIndex<K = usize, X = usize> = IndexLookup<UniqueKeyPositon<X>, K, X>;
+pub type UniquePosIndex<K = usize, X = usize> = IndexLookup<UniqueKeyPositon<X>, K, X>;
 /// Implementation for a `Index` with multi `Position`s.
-pub type MultiIndex<K = usize, X = usize> = IndexLookup<MultiKeyPositon<X>, K, X>;
+pub type MultiPosIndex<K = usize, X = usize> = IndexLookup<MultiKeyPositon<X>, K, X>;
 
 /// `Key` is from type [`usize`] and the information are saved in a List (Store).
 #[derive(Debug)]
@@ -219,7 +219,7 @@ mod tests {
 
         use Gender::*;
 
-        let mut idx = MultiIndex::<Gender, _>::with_capacity(10);
+        let mut idx = MultiPosIndex::<Gender, _>::with_capacity(10);
 
         idx.insert(Female, 10);
         idx.insert(Female, 2);
@@ -239,7 +239,7 @@ mod tests {
 
         #[test]
         fn by_insert() {
-            let mut idx = MultiIndex::<usize, usize>::with_capacity(0);
+            let mut idx = MultiPosIndex::<usize, usize>::with_capacity(0);
 
             // both not set
             assert_eq!(None, idx.min_key());
@@ -290,7 +290,7 @@ mod tests {
 
         #[test]
         fn by_insertwith_capacity() {
-            let mut idx = MultiIndex::<usize, usize>::with_capacity(5);
+            let mut idx = MultiPosIndex::<usize, usize>::with_capacity(5);
             // both not set
             assert_eq!(None, idx.min_key());
             assert_eq!(None, idx.max_key());
@@ -327,7 +327,7 @@ mod tests {
 
         #[test]
         fn by_delete() {
-            let mut idx = MultiIndex::<usize, usize>::with_capacity(5);
+            let mut idx = MultiPosIndex::<usize, usize>::with_capacity(5);
 
             // min/max not set
             assert_eq!(None, idx.min_key());
@@ -385,7 +385,7 @@ mod tests {
 
     #[test]
     fn store_and_lookup() {
-        let mut idx = UniqueIndex::<usize, usize>::with_capacity(5);
+        let mut idx = UniquePosIndex::<usize, usize>::with_capacity(5);
         idx.insert(0, 0);
         idx.insert(1, 1);
         idx.insert(2, 2);
@@ -413,7 +413,7 @@ mod tests {
             name: String,
         }
 
-        let mut idx = UniqueIndex::<usize, Complex>::with_capacity(5);
+        let mut idx = UniquePosIndex::<usize, Complex>::with_capacity(5);
         idx.insert(
             0,
             Complex {

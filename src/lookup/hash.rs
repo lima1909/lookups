@@ -10,9 +10,9 @@ use crate::{
 use std::{borrow::Borrow, hash::Hash, marker::PhantomData, ops::Deref};
 
 /// Implementation for a `HashLookup` with unique `Position`.
-pub type UniqueHash<K = String, X = usize> = HashLookup<UniqueKeyPositon<X>, K, X>;
+pub type UniquePosHash<K = String, X = usize> = HashLookup<UniqueKeyPositon<X>, K, X>;
 /// Implementation for a `HashLookup` with multi `Position`s.
-pub type MultiHash<K = String, X = usize> = HashLookup<MultiKeyPositon<X>, K, X>;
+pub type MultiPosHash<K = String, X = usize> = HashLookup<MultiKeyPositon<X>, K, X>;
 
 /// `HashLookup` is an implementation for an hash index.
 ///
@@ -97,7 +97,7 @@ mod tests {
 
     #[test]
     fn store_and_lookup() {
-        let mut idx = UniqueHash::with_capacity(5);
+        let mut idx = UniquePosHash::with_capacity(5);
         idx.insert(String::from("a"), 0);
         idx.insert(String::from("b"), 1);
         idx.insert(String::from("c"), 2);
