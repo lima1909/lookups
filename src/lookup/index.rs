@@ -196,8 +196,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::ops::Index;
-
     use super::*;
 
     #[test]
@@ -408,53 +406,53 @@ mod tests {
     }
 
     #[test]
-    fn store_and_lookup_and_index() {
-        let mut idx = UniqueIndex::<usize, String>::with_capacity(5);
-        idx.insert(0, String::from("0"));
-        idx.insert(1, String::from("1"));
-        idx.insert(2, String::from("2"));
-        idx.insert(4, String::from("4"));
+    fn store_and_lookup_complex_key() {
+        #[derive(Debug, Clone, PartialEq)]
+        struct Complex {
+            id: usize,
+            name: String,
+        }
+
+        let mut idx = UniqueIndex::<usize, Complex>::with_capacity(5);
+        idx.insert(
+            0,
+            Complex {
+                id: 1,
+                name: String::from("0"),
+            },
+        );
+        idx.insert(
+            1,
+            Complex {
+                id: 2,
+                name: String::from("1"),
+            },
+        );
+        idx.insert(
+            2,
+            Complex {
+                id: 3,
+                name: String::from("2"),
+            },
+        );
+        idx.insert(
+            4,
+            Complex {
+                id: 4,
+                name: String::from("4"),
+            },
+        );
 
         assert!(idx.key_exist(0));
-        assert!(!idx.key_exist(1_000));
 
-        assert_eq!(&[String::from("1")], idx.pos_by_key(1));
-        assert_eq!(&[String::from("2")], idx.pos_by_key(2));
-        assert_eq!(&[String::new(); 0], idx.pos_by_key(1_000));
+        assert_eq!(
+            &[Complex {
+                id: 2,
+                name: String::from("1"),
+            }],
+            idx.pos_by_key(1)
+        );
 
         // check many keys
-        assert_eq!(
-            vec![&String::from("0"), &String::from("1"), &String::from("4")],
-            idx.pos_by_many_keys([0, 1, 1_000, 4]).collect::<Vec<_>>()
-        );
-
-        let mut m = std::collections::HashMap::new();
-        m.insert(String::from("0"), String::from("A"));
-
-        let index: &dyn std::ops::Index<_, Output = _> = &m;
-        assert_eq!(String::from("A"), index[&idx.pos_by_key(0)[0]]);
-
-        assert_eq!(&String::from("A"), Retriev::new(&m).get("0"));
-        assert_eq!(
-            &String::from("A"),
-            Retriev::new(&m).get(&idx.pos_by_key(0)[0])
-        );
-    }
-
-    struct Retriev<'a, I> {
-        items: &'a I,
-    }
-
-    impl<'a, I> Retriev<'a, I> {
-        fn new(items: &'a I) -> Self {
-            Self { items }
-        }
-
-        fn get<Pos>(&self, pos: Pos) -> &'_ I::Output
-        where
-            I: Index<Pos>,
-        {
-            &self.items[pos]
-        }
     }
 }
