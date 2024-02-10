@@ -2,6 +2,8 @@
 //!
 pub mod position;
 
+use std::marker::PhantomData;
+
 pub use crate::lookup::Itemer;
 pub use position::{KeyPosition, MultiKeyPositon, UniqueKeyPositon};
 
@@ -60,6 +62,37 @@ pub trait Lookup<Q> {
         Self: Sized,
     {
         Positions::new(self, keys.into_iter())
+    }
+}
+
+/// The Idea of a `View` is like database view.
+/// They shows a subset of `Keys` which are saved in the [`crate::lookup::store::Store`].
+pub trait ViewCreator<'a, Q> {
+    type Key;
+    type Lookup: Lookup<Q>;
+
+    /// Create a `View` by the given `Key`s.
+    fn create_view<It>(&'a self, keys: It) -> View<Self::Lookup, Q>
+    where
+        It: IntoIterator<Item = Self::Key>;
+}
+
+/// A wrapper for a `Filterable` implementation
+#[repr(transparent)]
+pub struct View<L: Lookup<Q>, Q>(pub(crate) L, pub(crate) PhantomData<Q>);
+
+impl<L, Q> Lookup<Q> for View<L, Q>
+where
+    L: Lookup<Q>,
+{
+    type Pos = L::Pos;
+
+    fn key_exist(&self, key: Q) -> bool {
+        self.0.key_exist(key)
+    }
+
+    fn pos_by_key(&self, key: Q) -> &[Self::Pos] {
+        self.0.pos_by_key(key)
     }
 }
 

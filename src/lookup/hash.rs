@@ -4,7 +4,9 @@
 //! - all advantages, which has a hashing procedure
 //!
 use crate::{
-    lookup::store::{KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon},
+    lookup::store::{
+        KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon, View, ViewCreator,
+    },
     HashMap,
 };
 use std::{borrow::Borrow, hash::Hash, marker::PhantomData, ops::Deref};
@@ -91,9 +93,64 @@ impl<P: KeyPosition<X>, K, X> HashLookupExt<P, K, X> {
     }
 }
 
+impl<'a, Q, P, K, X> ViewCreator<'a, &'a Q> for HashLookup<P, K, X>
+where
+    K: Borrow<Q> + Hash + Eq + Clone,
+    Q: Hash + Eq + ?Sized,
+    P: KeyPosition<X>,
+    X: Clone,
+{
+    type Key = K;
+    type Lookup = HashLookup<P, K, X>;
+
+    fn create_view<It>(&'a self, keys: It) -> View<Self::Lookup, &'a Q>
+    where
+        It: IntoIterator<Item = Self::Key>,
+    {
+        let mut map = HashLookup::<P, K, X>::with_capacity(self.0.len());
+
+        for key in keys {
+            if let Some(pos) = self.0.get(key.borrow()) {
+                for p in pos.as_slice() {
+                    map.insert(key.clone(), p.clone());
+                }
+            }
+        }
+
+        View(map, PhantomData)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn create_view() {
+        let mut idx = UniquePosHash::with_capacity(5);
+        idx.insert(String::from("a"), 0);
+        idx.insert(String::from("b"), 1);
+        idx.insert(String::from("c"), 2);
+        idx.insert(String::from("s"), 4);
+
+        assert!(idx.key_exist("a"));
+
+        let view = idx.create_view([String::from("b"), String::from("s")]);
+        assert!(!view.key_exist("a"));
+        assert!(!view.key_exist("x"));
+
+        assert!(view.key_exist("b"));
+        assert!(view.key_exist("s"));
+
+        assert_eq!(&[4], view.pos_by_key("s"));
+        assert_eq!(&[1usize; 0], view.pos_by_key("c"));
+
+        assert_eq!(
+            vec![&1, &4],
+            view.pos_by_many_keys(["a", "b", "-", "s"])
+                .collect::<Vec<_>>()
+        );
+    }
 
     #[test]
     fn store_and_lookup() {

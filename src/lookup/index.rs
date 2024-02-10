@@ -14,7 +14,9 @@
 //!
 //! - the finding of an `Key` is very fast (you can __directly__ jump to the `Key`)
 //!
-use crate::lookup::store::{KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon};
+use crate::lookup::store::{
+    KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon, View, ViewCreator,
+};
 use std::{marker::PhantomData, ops::Deref};
 
 /// Implementation for a `Index` with unique `Position`.
@@ -194,6 +196,35 @@ where
     }
 }
 
+impl<P, K, X> ViewCreator<'_, K> for IndexLookup<P, K, X>
+where
+    K: Into<usize> + Clone,
+    P: KeyPosition<X> + Clone,
+    X: Clone,
+{
+    type Key = K;
+    type Lookup = IndexLookup<P, K, X>;
+
+    fn create_view<It>(&self, keys: It) -> View<Self::Lookup, K>
+    where
+        It: IntoIterator<Item = Self::Key>,
+    {
+        let mut lkup = IndexLookup::<P, K, X>::with_capacity(self.inner.len());
+
+        for key in keys {
+            let k = key.clone();
+
+            if let Some(Some((_, pos))) = self.inner.get(key.into()) {
+                for p in pos.as_slice() {
+                    lkup.insert(k.clone(), p.clone());
+                }
+            }
+        }
+
+        View(lkup, PhantomData)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -232,6 +263,32 @@ mod tests {
         assert_eq!(vec![Female, Male, None], idx.keys().collect::<Vec<_>>());
 
         assert_eq!(&[2, 10], idx.pos_by_key(Female));
+    }
+
+    #[test]
+    fn create_view() {
+        let mut idx = MultiPosIndex::<usize, String>::with_capacity(0);
+        idx.insert(0, String::from("a"));
+        idx.insert(1, String::from("b"));
+        idx.insert(2, String::from("c"));
+        idx.insert(4, String::from("s"));
+
+        assert!(idx.key_exist(0));
+
+        let view = idx.create_view([1, 4]);
+        assert!(!view.key_exist(0));
+        assert!(!view.key_exist(2));
+
+        assert!(view.key_exist(1));
+        assert!(view.key_exist(4));
+
+        assert_eq!(&[String::from("s")], view.pos_by_key(4));
+        assert_eq!(&[String::from("b")], view.pos_by_key(1));
+
+        assert_eq!(
+            vec![&String::from("b"), &String::from("s")],
+            view.pos_by_many_keys([0, 1, 2, 99, 4,]).collect::<Vec<_>>()
+        );
     }
 
     mod min_max_keys {

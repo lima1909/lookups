@@ -241,5 +241,11 @@ mod tests {
             .collect::<std::collections::HashSet<_>>();
         assert!(keys.contains("Audi"));
         assert!(keys.contains("BMW"));
+
+        use crate::lookup::store::Lookup;
+
+        let view = v.lkup().create_view(["Audi".into()]);
+        assert!(view.key_exist("Audi"));
+        assert!(!view.key_exist("BMW"));
     }
 }
