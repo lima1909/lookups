@@ -95,7 +95,7 @@ impl<S, T> Deref for LVec<S, T> {
 ///
 /// use lookups::{collections::ro::LHashMap, lookup::UniquePosIndex};
 ///
-/// let map = LHashMap::<UniquePosIndex<_, _>, _, _>::new(|p| p.id, data);
+/// let map = LHashMap::<UniquePosIndex<_>, _, _>::new(|p| p.id, data);
 ///
 /// assert!(map.contains_key("Paul"));     // conventionally HashMap access with String - Key
 /// assert!(map.lkup().contains_key(2)); // lookup with usize - Key
@@ -149,16 +149,15 @@ impl<S, K, V> Deref for LHashMap<S, K, V> {
 
 #[cfg(test)]
 mod tests {
-    use crate::lookup::{MultiPosIndex, UniquePosHash, UniquePosIndex};
-
     use super::*;
+    use crate::lookup::{MultiPosIndex, UniquePosHash, UniquePosIndex};
 
     #[derive(Debug, PartialEq)]
     struct Car(u16, String);
 
     impl Car {
-        fn id(&self) -> u16 {
-            self.0
+        fn id(&self) -> usize {
+            self.0.into()
         }
 
         fn name(&self) -> String {
@@ -172,7 +171,7 @@ mod tests {
             ("Audi".into(), Car(99, "Audi".into())),
             ("BMW".into(), Car(1, "BMW".into())),
         ]);
-        let m = LHashMap::<MultiPosIndex<u16, String>, _, _>::new(Car::id, items);
+        let m = LHashMap::<MultiPosIndex<String>, _, _>::new(Car::id, items);
 
         assert!(m.contains_key("BMW"));
 
@@ -187,7 +186,7 @@ mod tests {
     #[test]
     fn lvec_u16() {
         let items = vec![Car(99, "Audi".into()), Car(1, "BMW".into())];
-        let v = LVec::<UniquePosIndex<u16, _>, _>::new(Car::id, items);
+        let v = LVec::<UniquePosIndex<_>, _>::new(Car::id, items);
 
         assert!(v.lkup().contains_key(1));
         assert!(v.lkup().contains_key(99));

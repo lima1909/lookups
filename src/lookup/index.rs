@@ -20,83 +20,77 @@ use crate::lookup::store::{
 use std::{marker::PhantomData, ops::Deref};
 
 /// Implementation for a `Index` with unique `Position`.
-pub type UniquePosIndex<K = usize, X = usize> = IndexLookup<UniqueKeyPositon<X>, K, X>;
+pub type UniquePosIndex<X = usize> = IndexLookup<UniqueKeyPositon<X>, X>;
 /// Implementation for a `Index` with multi `Position`s.
-pub type MultiPosIndex<K = usize, X = usize> = IndexLookup<MultiKeyPositon<X>, K, X>;
+pub type MultiPosIndex<X = usize> = IndexLookup<MultiKeyPositon<X>, X>;
 
 /// `Key` is from type [`usize`] and the information are saved in a List (Store).
 #[derive(Debug)]
-pub struct IndexLookup<P, K = usize, X = usize> {
-    inner: Vec<Option<(K, P)>>,
+pub struct IndexLookup<P, X = usize> {
+    inner: Vec<Option<(usize, P)>>,
     min_index: usize,
     max_index: usize,
     _x: PhantomData<X>,
 }
 
-impl<P, K, X> Lookup<K> for IndexLookup<P, K, X>
+impl<P, X> Lookup<usize> for IndexLookup<P, X>
 where
-    K: Into<usize>,
     P: KeyPosition<X>,
 {
     type Pos = X;
 
-    fn key_exist(&self, key: K) -> bool {
-        matches!(self.inner.get(key.into()), Some(Some(_)))
+    fn key_exist(&self, key: usize) -> bool {
+        matches!(self.inner.get(key), Some(Some(_)))
     }
-    fn pos_by_key(&self, key: K) -> &[Self::Pos] {
-        match self.inner.get(key.into()) {
+    fn pos_by_key(&self, key: usize) -> &[Self::Pos] {
+        match self.inner.get(key) {
             Some(Some((_, p))) => p.as_slice(),
             _ => &[],
         }
     }
 }
 
-impl<P, K, X> Store for IndexLookup<P, K, X>
+impl<P, X> Store for IndexLookup<P, X>
 where
-    K: Into<usize> + Clone,
     P: KeyPosition<X> + Clone,
 {
-    type Key = K;
+    type Key = usize;
     type Pos = X;
 
     fn insert(&mut self, key: Self::Key, pos: Self::Pos) {
-        let idx = key.clone().into();
-
         // if necessary (len <= idx), than double the vec
-        if self.inner.len() <= idx {
+        if self.inner.len() <= key {
             const PRE_ALLOC_SIZE: usize = 100;
-            self.inner.resize(idx + PRE_ALLOC_SIZE, None);
+            self.inner.resize(key + PRE_ALLOC_SIZE, None);
         }
 
         // insert new key and pos
-        match self.inner.get_mut(idx) {
+        match self.inner.get_mut(key) {
             Some(Some((_, p))) => p.add_pos(pos),
-            _ => self.inner[idx] = Some((key, P::new(pos))),
+            _ => self.inner[key] = Some((key, P::new(pos))),
         }
 
         // define new max index
-        if self.max_index < idx {
-            self.max_index = idx;
+        if self.max_index < key {
+            self.max_index = key;
         }
         // define new min index
-        if self.min_index > idx {
-            self.min_index = idx;
+        if self.min_index > key {
+            self.min_index = key;
         }
     }
 
     fn delete(&mut self, key: Self::Key, pos: &Self::Pos) {
-        let idx = key.into();
-
-        if let Some(Some((_, rm_idx))) = self.inner.get_mut(idx) {
+        if let Some(Some((_, rm_idx))) = self.inner.get_mut(key) {
             if rm_idx.remove_pos(pos) {
                 // las pos was deleted
-                self.inner[idx] = None;
+                self.inner[key] = None;
 
                 // define new max index
-                if self.max_index == idx {
+                if self.max_index == key {
                     self.max_index = self.find_new_max_index()
                 }
-                if self.min_index == idx {
+                if self.min_index == key {
                     self.min_index = self.find_new_min_index()
                 }
             }
@@ -116,7 +110,7 @@ where
 //
 // ----------- internal (private) helper implementation --------------------------
 //
-impl<P, K, X> IndexLookup<P, K, X> {
+impl<P, X> IndexLookup<P, X> {
     #[inline(always)]
     fn find_new_max_index(&self) -> usize {
         self.inner
@@ -147,76 +141,69 @@ impl<P, K, X> IndexLookup<P, K, X> {
     }
 
     #[inline(always)]
-    pub fn get_key_by_index(&self, index: usize) -> Option<K>
-    where
-        K: Clone,
-    {
-        self.inner.get(index)?.as_ref().map(|(k, _)| k.clone())
+    pub fn get_key_by_index(&self, index: usize) -> Option<usize> {
+        self.inner.get(index)?.as_ref().map(|(k, _)| *k)
     }
 }
 
 /// A proxy for exposing [`IndexLookup`] specific extensions.
 #[repr(transparent)]
-pub struct IndexLookupExt<P, K, X>(IndexLookup<P, K, X>);
+pub struct IndexLookupExt<P, X>(IndexLookup<P, X>);
 
-impl<P, K, X> Deref for IndexLookup<P, K, X> {
-    type Target = IndexLookupExt<P, K, X>;
+impl<P, X> Deref for IndexLookup<P, X> {
+    type Target = IndexLookupExt<P, X>;
 
     fn deref(&self) -> &Self::Target {
         // SAFTY:
         // self is a valid pointer and
         // IndexLookupExt is repr(transparent) thus has the same memory layout like IndexLookup
-        unsafe { &*(self as *const IndexLookup<P, K, X> as *const IndexLookupExt<P, K, X>) }
+        unsafe { &*(self as *const IndexLookup<P, X> as *const IndexLookupExt<P, X>) }
     }
 }
 
-impl<P, K, X> IndexLookupExt<P, K, X>
-where
-    K: Clone,
-{
+impl<P, X> IndexLookupExt<P, X> {
     /// Returns all stored `Key`s.
-    pub fn keys(&self) -> impl Iterator<Item = K> + '_ {
+    pub fn keys(&self) -> impl Iterator<Item = usize> + '_ {
         if self.0.min_index > self.0.max_index {
             &[]
         } else {
             &self.0.inner[self.0.min_index..=self.0.max_index]
         }
         .iter()
-        .filter_map(|o| o.as_ref().map(|(key, _)| key.clone()))
+        .filter_map(|o| o.as_ref().map(|(key, _)| *key))
     }
 
     /// Returns smallest stored `Key`.
-    pub fn min_key(&self) -> Option<K> {
+    pub fn min_key(&self) -> Option<usize> {
         self.0.get_key_by_index(self.0.min_index)
     }
 
     /// Returns greatest stored `Key`.
-    pub fn max_key(&self) -> Option<K> {
+    pub fn max_key(&self) -> Option<usize> {
         self.0.get_key_by_index(self.0.max_index)
     }
 }
 
-impl<P, K, X> ViewCreator<'_, K> for IndexLookup<P, K, X>
+impl<P, X> ViewCreator<'_, usize> for IndexLookup<P, X>
 where
-    K: Into<usize> + Clone,
     P: KeyPosition<X> + Clone,
     X: Clone,
 {
-    type Key = K;
-    type Lookup = IndexLookup<P, K, X>;
+    type Key = usize;
+    type Lookup = IndexLookup<P, X>;
 
-    fn create_view<It>(&self, keys: It) -> View<Self::Lookup, K>
+    fn create_view<It>(&self, keys: It) -> View<Self::Lookup, usize>
     where
         It: IntoIterator<Item = Self::Key>,
     {
-        let mut lkup = IndexLookup::<P, K, X>::with_capacity(self.inner.len());
+        let mut lkup = IndexLookup::<P, X>::with_capacity(self.inner.len());
 
         for key in keys {
-            let k = key.clone();
+            let k = key;
 
-            if let Some(Some((_, pos))) = self.inner.get(key.into()) {
+            if let Some(Some((_, pos))) = self.inner.get(key) {
                 for p in pos.as_slice() {
-                    lkup.insert(k.clone(), p.clone());
+                    lkup.insert(k, p.clone());
                 }
             }
         }
@@ -232,42 +219,43 @@ mod tests {
     #[test]
     fn gender() {
         #[derive(Debug, Clone, PartialEq)]
+        #[repr(usize)]
         enum Gender {
             Female,
             Male,
             None,
         }
 
-        impl From<Gender> for usize {
-            fn from(gender: Gender) -> Self {
-                match gender {
-                    Gender::Female => 0,
-                    Gender::Male => 1,
-                    Gender::None => 2,
+        impl PartialEq<usize> for Gender {
+            fn eq(&self, other: &usize) -> bool {
+                match self {
+                    Gender::Female => 0 == *other,
+                    Gender::Male => 1 == *other,
+                    Gender::None => 2 == *other,
                 }
             }
         }
 
         use Gender::*;
 
-        let mut idx = MultiPosIndex::<Gender, _>::with_capacity(10);
+        let mut idx = MultiPosIndex::<_>::with_capacity(10);
 
-        idx.insert(Female, 10);
-        idx.insert(Female, 2);
-        idx.insert(Male, 1);
-        idx.insert(None, 0);
+        idx.insert(Female as usize, 10);
+        idx.insert(Female as usize, 2);
+        idx.insert(Male as usize, 1);
+        idx.insert(None as usize, 0);
 
-        assert_eq!(Some(Female), idx.min_key());
-        assert_eq!(Some(None), idx.max_key());
+        assert_eq!(Female, idx.min_key().unwrap());
+        assert_eq!(None, idx.max_key().unwrap());
 
         assert_eq!(vec![Female, Male, None], idx.keys().collect::<Vec<_>>());
 
-        assert_eq!(&[2, 10], idx.pos_by_key(Female));
+        assert_eq!(&[2, 10], idx.pos_by_key(Female as usize));
     }
 
     #[test]
     fn create_view() {
-        let mut idx = MultiPosIndex::<usize, String>::with_capacity(0);
+        let mut idx = MultiPosIndex::<String>::with_capacity(0);
         idx.insert(0, String::from("a"));
         idx.insert(1, String::from("b"));
         idx.insert(2, String::from("c"));
@@ -296,7 +284,7 @@ mod tests {
 
         #[test]
         fn by_insert() {
-            let mut idx = MultiPosIndex::<usize, usize>::with_capacity(0);
+            let mut idx = MultiPosIndex::<usize>::with_capacity(0);
 
             // both not set
             assert_eq!(None, idx.min_key());
@@ -347,7 +335,7 @@ mod tests {
 
         #[test]
         fn by_insertwith_capacity() {
-            let mut idx = MultiPosIndex::<usize, usize>::with_capacity(5);
+            let mut idx = MultiPosIndex::<usize>::with_capacity(5);
             // both not set
             assert_eq!(None, idx.min_key());
             assert_eq!(None, idx.max_key());
@@ -384,7 +372,7 @@ mod tests {
 
         #[test]
         fn by_delete() {
-            let mut idx = MultiPosIndex::<usize, usize>::with_capacity(5);
+            let mut idx = MultiPosIndex::<usize>::with_capacity(5);
 
             // min/max not set
             assert_eq!(None, idx.min_key());
@@ -442,7 +430,7 @@ mod tests {
 
     #[test]
     fn store_and_lookup() {
-        let mut idx = UniquePosIndex::<usize, usize>::with_capacity(5);
+        let mut idx = UniquePosIndex::<usize>::with_capacity(5);
         idx.insert(0, 0);
         idx.insert(1, 1);
         idx.insert(2, 2);
@@ -470,7 +458,7 @@ mod tests {
             name: String,
         }
 
-        let mut idx = UniquePosIndex::<usize, Complex>::with_capacity(5);
+        let mut idx = UniquePosIndex::<Complex>::with_capacity(5);
         idx.insert(
             0,
             Complex {
