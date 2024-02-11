@@ -10,13 +10,13 @@ pub mod ro;
 
 /// A `Retriever` is the main interface for get Items by an given `Lookup`.
 pub struct Retriever<'a, L, I> {
-    lookup: &'a L,
+    lookup: L,
     items: &'a I,
 }
 
 impl<'a, L, I> Retriever<'a, L, I> {
     /// Create a new instance of an [`Retriever`].
-    pub const fn new(lookup: &'a L, items: &'a I) -> Self {
+    pub const fn new(lookup: L, items: &'a I) -> Self {
         Self { lookup, items }
     }
 
@@ -114,14 +114,13 @@ impl<'a, L, I> Retriever<'a, L, I> {
         self.items.items(self.lookup.pos_by_many_keys(keys))
     }
 
-    pub fn create_view<It, Q>(&self, keys: It) -> View<L::Lookup, Q>
-    //Retriever<'_, View<L::Lookup, Q>, I>
+    pub fn create_view<It, Q>(&'a self, keys: It) -> Retriever<'_, View<L::Lookup, Q>, I>
     where
         L: ViewCreator<'a, Q>,
         It: IntoIterator<Item = L::Key>,
     {
-        // Retriever::new(self.lookup.create_view(keys), self.items)
-        self.lookup.create_view(keys)
+        let view = self.lookup.create_view(keys);
+        Retriever::new(view, self.items)
     }
 }
 

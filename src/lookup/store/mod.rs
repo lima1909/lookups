@@ -65,6 +65,17 @@ pub trait Lookup<Q> {
     }
 }
 
+impl<L, Q> Lookup<Q> for &L
+where
+    L: Lookup<Q>,
+{
+    type Pos = L::Pos;
+
+    fn pos_by_key(&self, key: Q) -> &[Self::Pos] {
+        (*self).pos_by_key(key)
+    }
+}
+
 /// The Idea of a `View` is like database view.
 /// They shows a subset of `Keys` which are saved in the [`crate::lookup::store::Store`].
 pub trait ViewCreator<'a, Q> {
@@ -79,7 +90,16 @@ pub trait ViewCreator<'a, Q> {
 
 /// A wrapper for a `Filterable` implementation
 #[repr(transparent)]
-pub struct View<L: Lookup<Q>, Q>(pub(crate) L, pub(crate) PhantomData<Q>);
+pub struct View<L, Q>(L, PhantomData<Q>);
+
+impl<L, Q> View<L, Q>
+where
+    L: Lookup<Q>,
+{
+    pub fn new(lookup: L) -> Self {
+        Self(lookup, PhantomData)
+    }
+}
 
 impl<L, Q> Lookup<Q> for View<L, Q>
 where

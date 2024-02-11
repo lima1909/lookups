@@ -117,7 +117,7 @@ where
             }
         }
 
-        View(map, PhantomData)
+        View::new(map)
     }
 }
 

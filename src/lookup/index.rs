@@ -208,7 +208,7 @@ where
             }
         }
 
-        View(lkup, PhantomData)
+        View::new(lkup)
     }
 }
 
