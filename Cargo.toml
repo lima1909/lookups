@@ -20,3 +20,8 @@ hashbrown = [ "dep:hashbrown" ]
 
 [dev-dependencies]
 rstest = "0.18"
+divan = "0.1"
+
+[[bench]]
+name = "example"
+harness = false
