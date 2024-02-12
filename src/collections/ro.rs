@@ -241,11 +241,21 @@ mod tests {
         assert!(keys.contains("Audi"));
         assert!(keys.contains("BMW"));
 
-        use crate::lookup::store::{Lookup, ViewCreator};
-
         let l = v.lkup();
         let view = l.create_view(["Audi".into()]);
-        // assert!(view.contains_key("Audi"));
-        assert!(!view.key_exist("BMW")); // TODO this is wrong
+
+        assert!(view.contains_key("Audi"));
+        assert!(!view.contains_key("BMW"));
+
+        assert_eq!(
+            vec![&Car(99, "Audi".into())],
+            view.get_by_key("Audi").collect::<Vec<_>>()
+        );
+
+        assert_eq!(
+            vec![&Car(99, "Audi".into())],
+            view.get_by_many_keys(["Audi", "BMW", "VW"])
+                .collect::<Vec<_>>()
+        );
     }
 }
