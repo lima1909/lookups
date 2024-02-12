@@ -110,10 +110,8 @@ where
         let mut map = HashLookup::<P, K, X>::with_capacity(self.0.len());
 
         for key in keys {
-            if let Some(pos) = self.0.get(key.borrow()) {
-                for p in pos.as_slice() {
-                    map.insert(key.clone(), p.clone());
-                }
+            for p in self.pos_by_key(key.borrow()) {
+                map.insert(key.clone(), p.clone());
             }
         }
 

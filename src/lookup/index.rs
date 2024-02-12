@@ -199,12 +199,8 @@ where
         let mut lkup = IndexLookup::<P, X>::with_capacity(self.inner.len());
 
         for key in keys {
-            let k = key;
-
-            if let Some(Some((_, pos))) = self.inner.get(key) {
-                for p in pos.as_slice() {
-                    lkup.insert(k, p.clone());
-                }
+            for p in self.pos_by_key(key) {
+                lkup.insert(key, p.clone());
             }
         }
 
