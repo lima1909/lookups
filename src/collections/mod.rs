@@ -1,10 +1,7 @@
 //! The `collections` module contains the collections implementations which are using the lookups.
 //!
 
-use crate::lookup::{
-    store::{Lookup, View, ViewCreator},
-    Itemer,
-};
+use crate::lookup::{store::Lookup, Itemer};
 
 pub mod ro;
 
@@ -112,15 +109,6 @@ impl<'a, L, I> Retriever<'a, L, I> {
         Q: 'a,
     {
         self.items.items(self.lookup.pos_by_many_keys(keys))
-    }
-
-    pub fn create_view<It, Q>(&'a self, keys: It) -> Retriever<'_, View<L::Lookup, Q>, I>
-    where
-        L: ViewCreator<'a, Q>,
-        It: IntoIterator<Item = L::Key>,
-    {
-        let view = self.lookup.create_view(keys);
-        Retriever::new(view, self.items)
     }
 }
 

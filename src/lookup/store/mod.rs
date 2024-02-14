@@ -103,7 +103,7 @@ where
     }
 }
 
-/// A wrapper for a `Filterable` implementation
+/// A wrapper for a `Lookup` implementation
 #[repr(transparent)]
 pub struct View<L, Q>(L, PhantomData<Q>);
 
@@ -122,12 +122,19 @@ where
 {
     type Pos = L::Pos;
 
-    fn key_exist(&self, key: Q) -> bool {
-        self.0.key_exist(key)
-    }
-
     fn pos_by_key(&self, key: Q) -> &[Self::Pos] {
         self.0.pos_by_key(key)
+    }
+}
+
+impl<L, Q> std::ops::Deref for View<L, Q>
+where
+    L: std::ops::Deref,
+{
+    type Target = L::Target;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.deref()
     }
 }
 

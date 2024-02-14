@@ -56,8 +56,7 @@ assert!(map.lkup().contains_key(2));
 assert_eq!(map.lkup().get_by_key(5).next(), Some(&Car{id: 5, name: "Audi".into()}));
 
 // create a View
-let l = map.lkup();
-let view = l.create_view([0, 2]);
+let view = map.create_view([0, 2]);
 
 assert_eq!(view.get_by_key(0).next(), Some(&Car{id: 0, name: "BMW".into()}));
 ```

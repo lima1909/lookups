@@ -4,7 +4,7 @@
 //!
 
 use super::Retriever;
-use crate::lookup::store::{Store, ToStore};
+use crate::lookup::store::{Store, ToStore, View, ViewCreator};
 use std::ops::Deref;
 
 /// [`LVec`] is a read only lookup extenstion for a [`std::vec::Vec`].
@@ -65,6 +65,18 @@ impl<S, I> LVec<S, I> {
 
     pub fn lkup(&self) -> Retriever<'_, &S, Vec<I>> {
         Retriever::new(&self.store, &self.items)
+    }
+
+    pub fn create_lkup_view<'a, It, Q>(
+        &'a self,
+        keys: It,
+    ) -> Retriever<'_, View<S::Lookup, Q>, Vec<I>>
+    where
+        S: ViewCreator<'a, Q>,
+        It: IntoIterator<Item = S::Key>,
+    {
+        let view = self.store.create_view(keys);
+        Retriever::new(view, &self.items)
     }
 }
 
@@ -136,6 +148,18 @@ impl<S, K, V> LHashMap<S, K, V> {
 
     pub fn lkup(&self) -> Retriever<'_, &S, crate::HashMap<K, V>> {
         Retriever::new(&self.store, &self.items)
+    }
+
+    pub fn create_lkup_view<'a, It, Q>(
+        &'a self,
+        keys: It,
+    ) -> Retriever<'_, View<S::Lookup, Q>, crate::HashMap<K, V>>
+    where
+        S: ViewCreator<'a, Q>,
+        It: IntoIterator<Item = S::Key>,
+    {
+        let view = self.store.create_view(keys);
+        Retriever::new(view, &self.items)
     }
 }
 
@@ -241,8 +265,7 @@ mod tests {
         assert!(keys.contains("Audi"));
         assert!(keys.contains("BMW"));
 
-        let l = v.lkup();
-        let view = l.create_view(["Audi".into()]);
+        let view = v.create_lkup_view(["Audi".into()]);
 
         assert!(view.contains_key("Audi"));
         assert!(!view.contains_key("BMW"));
@@ -257,5 +280,7 @@ mod tests {
             view.get_by_many_keys(["Audi", "BMW", "VW"])
                 .collect::<Vec<_>>()
         );
+
+        assert_eq!(vec![&String::from("Audi")], view.keys().collect::<Vec<_>>());
     }
 }
