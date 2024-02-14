@@ -54,9 +54,11 @@ assert!(map.lkup().contains_key(2));
 
 // get a Car by an given Key
 assert_eq!(map.lkup().get_by_key(5).next(), Some(&Car{id: 5, name: "Audi".into()}));
+assert_eq!((map.lkup().min_key(), map.lkup().max_key()), (Some(0), Some(5)));
 
-// create a View
-let view = map.create_view([0, 2]);
+// create a View: a subset from the Lookups (defined by the given Keys)
+let view = map.create_lkup_view([0, 2]);
 
 assert_eq!(view.get_by_key(0).next(), Some(&Car{id: 0, name: "BMW".into()}));
+assert_eq!((view.min_key(), view.max_key()), (Some(0), Some(2)));
 ```
