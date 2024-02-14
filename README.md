@@ -52,16 +52,12 @@ assert!(map.contains_key("VW"));
 // lookup with Key (id: usize)
 assert!(map.lkup().contains_key(2));
 
-assert_eq!(
-    &Car{id: 5, name: "Audi".into()},
-    // get a Car by an given Key
-    map.lkup().get_by_key(5).next().unwrap()
-);
+// get a Car by an given Key
+assert_eq!(map.lkup().get_by_key(5).next(), Some(&Car{id: 5, name: "Audi".into()}));
 
-assert_eq!(
-    vec![&Car{id: 0, name: "BMW".into()},
-         &Car{id: 2, name: "VW".into()}],
-    // get many Cars by given many Keys
-    map.lkup().get_by_many_keys([0, 2]).collect::<Vec<_>>(),
-);
+// create a View
+let l = map.lkup();
+let view = l.create_view([0, 2]);
+
+assert_eq!(view.get_by_key(0).next(), Some(&Car{id: 0, name: "BMW".into()}));
 ```
