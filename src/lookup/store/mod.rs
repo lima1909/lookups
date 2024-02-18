@@ -88,21 +88,6 @@ pub trait ViewCreator<'a, Q> {
         It: IntoIterator<Item = Self::Key>;
 }
 
-impl<'a, V, Q> ViewCreator<'a, Q> for &V
-where
-    V: ViewCreator<'a, Q>,
-{
-    type Key = V::Key;
-    type Lookup = V::Lookup;
-
-    fn create_view<It>(&'a self, keys: It) -> View<Self::Lookup, Q>
-    where
-        It: IntoIterator<Item = Self::Key>,
-    {
-        (*self).create_view(keys)
-    }
-}
-
 /// A wrapper for a `Lookup` implementation
 #[repr(transparent)]
 pub struct View<L, Q>(L, PhantomData<Q>);
