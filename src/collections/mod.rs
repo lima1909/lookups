@@ -4,6 +4,7 @@
 use crate::lookup::{store::Lookup, Itemer};
 
 pub mod ro;
+pub mod rw;
 
 /// A `Retriever` is the main interface for get Items by an given `Lookup`.
 pub struct Retriever<'a, L, I> {
