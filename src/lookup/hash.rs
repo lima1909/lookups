@@ -5,30 +5,31 @@
 //!
 use crate::{
     lookup::store::{
-        KeyPosition, Lookup, MultiKeyPositon, Store, UniqueKeyPositon, View, ViewCreator,
+        KeyPosition, KeyPositionAsSlice, Lookup, MultiKeyPositon, Store, UniqueKeyPositon, View,
+        ViewCreator,
     },
     HashMap,
 };
-use std::{borrow::Borrow, hash::Hash, marker::PhantomData, ops::Deref};
+use std::{borrow::Borrow, hash::Hash, ops::Deref};
 
 /// Implementation for a `HashLookup` with unique `Position`.
-pub type UniquePosHash<K = String, X = usize> = HashLookup<UniqueKeyPositon<X>, K, X>;
+pub type UniquePosHash<K = String, X = usize> = HashLookup<K, UniqueKeyPositon<X>>;
 /// Implementation for a `HashLookup` with multi `Position`s.
-pub type MultiPosHash<K = String, X = usize> = HashLookup<MultiKeyPositon<X>, K, X>;
+pub type MultiPosHash<K = String, X = usize> = HashLookup<K, MultiKeyPositon<X>>;
 
 /// `HashLookup` is an implementation for an hash index.
 ///
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct HashLookup<P: KeyPosition<X>, K = String, X = usize>(HashMap<K, P>, PhantomData<X>);
+pub struct HashLookup<K, P>(HashMap<K, P>);
 
-impl<P, K, X, Q> Lookup<&Q> for HashLookup<P, K, X>
+impl<Q, K, P> Lookup<&Q> for HashLookup<K, P>
 where
     K: Borrow<Q> + Hash + Eq,
     Q: Hash + Eq + ?Sized,
-    P: KeyPosition<X>,
+    P: KeyPositionAsSlice,
 {
-    type Pos = X;
+    type Pos = P::Pos;
 
     fn key_exist(&self, key: &Q) -> bool {
         self.0.contains_key(key)
@@ -42,19 +43,44 @@ where
     }
 }
 
-impl<P, K, X> Store for HashLookup<P, K, X>
+impl<'a, Q, K, P> ViewCreator<'a, &'a Q> for HashLookup<K, P>
 where
-    K: Hash + Eq,
-    P: KeyPosition<X>,
+    K: Borrow<Q> + Hash + Eq + Clone,
+    Q: Hash + Eq + ?Sized,
+    P: KeyPositionAsSlice + 'a,
 {
     type Key = K;
-    type Pos = X;
+    type Lookup = HashLookup<K, &'a P>;
+
+    fn create_view<It>(&'a self, keys: It) -> View<Self::Lookup, &'a Q>
+    where
+        It: IntoIterator<Item = Self::Key>,
+    {
+        let mut map = HashMap::<K, &P>::with_capacity(self.0.len());
+
+        for key in keys {
+            if let Some(p) = self.0.get(key.borrow()) {
+                map.insert(key.clone(), p);
+            }
+        }
+
+        View::new(HashLookup(map))
+    }
+}
+
+impl<K, P> Store for HashLookup<K, P>
+where
+    K: Hash + Eq,
+    P: KeyPosition,
+{
+    type Key = K;
+    type Pos = P::Pos;
 
     fn insert(&mut self, key: Self::Key, pos: Self::Pos) {
         match self.0.get_mut(&key) {
             Some(p) => p.add_pos(pos),
             None => {
-                self.0.insert(key, P::new(pos));
+                self.0.insert(key, P::from_pos(pos));
             }
         }
     }
@@ -68,54 +94,28 @@ where
     }
 
     fn with_capacity(capacity: usize) -> Self {
-        HashLookup(HashMap::with_capacity(capacity), PhantomData)
+        HashLookup(HashMap::with_capacity(capacity))
     }
 }
 
 /// Implementation for extending the [`Lookup`].
 #[repr(transparent)]
-pub struct HashLookupExt<P: KeyPosition<X>, K, X>(HashLookup<P, K, X>);
+pub struct HashLookupExt<K, P>(HashLookup<K, P>);
 
-impl<P: KeyPosition<X>, K, X> Deref for HashLookup<P, K, X> {
-    type Target = HashLookupExt<P, K, X>;
+impl<K, P> Deref for HashLookup<K, P> {
+    type Target = HashLookupExt<K, P>;
 
     fn deref(&self) -> &Self::Target {
         // SAFTY:
         // self is a valid pointer and
         // HashLookupExt is repr(transparent) thus has the same memory layout like HashLookup
-        unsafe { &*(self as *const HashLookup<P, K, X> as *const HashLookupExt<P, K, X>) }
+        unsafe { &*(self as *const HashLookup<K, P> as *const HashLookupExt<K, P>) }
     }
 }
 
-impl<P: KeyPosition<X>, K, X> HashLookupExt<P, K, X> {
+impl<K, P> HashLookupExt<K, P> {
     pub fn keys(&self) -> impl Iterator<Item = &'_ K> {
         self.0 .0.keys()
-    }
-}
-
-impl<'a, Q, P, K, X> ViewCreator<'a, &'a Q> for HashLookup<P, K, X>
-where
-    K: Borrow<Q> + Hash + Eq + Clone,
-    Q: Hash + Eq + ?Sized,
-    P: KeyPosition<X>,
-    X: Clone,
-{
-    type Key = K;
-    type Lookup = HashLookup<P, K, X>;
-
-    fn create_view<It>(&'a self, keys: It) -> View<Self::Lookup, &'a Q>
-    where
-        It: IntoIterator<Item = Self::Key>,
-    {
-        let mut map = HashLookup::<P, K, X>::with_capacity(self.0.len());
-
-        for key in keys {
-            for p in self.pos_by_key(key.borrow()) {
-                map.insert(key.clone(), p.clone());
-            }
-        }
-
-        View::new(map)
     }
 }
 
@@ -148,6 +148,10 @@ mod tests {
             view.pos_by_many_keys(["a", "b", "-", "s"])
                 .collect::<Vec<_>>()
         );
+
+        let keys = view.keys().collect::<Vec<_>>();
+        assert!(keys.contains(&&String::from("b")));
+        assert!(keys.contains(&&String::from("s")));
     }
 
     #[test]

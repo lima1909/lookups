@@ -5,7 +5,7 @@ pub mod position;
 use std::marker::PhantomData;
 
 pub use crate::lookup::Itemer;
-pub use position::{KeyPosition, MultiKeyPositon, UniqueKeyPositon};
+pub use position::{KeyPosition, KeyPositionAsSlice, MultiKeyPositon, UniqueKeyPositon};
 
 /// Store is an container which the mapping between the `Key`s and they `Position`s stored.
 ///
@@ -207,24 +207,24 @@ mod tests {
     use rstest::rstest;
     use std::{borrow::Borrow, collections::HashMap, hash::Hash};
 
-    struct MapIndex<K, X: KeyPosition<usize>> {
-        idx: HashMap<K, X>,
+    struct MapIndex<K, P> {
+        idx: HashMap<K, P>,
     }
 
     impl MapIndex<String, UniqueKeyPositon<usize>> {
         fn new() -> Self {
             let mut idx = HashMap::new();
-            idx.insert("a".into(), UniqueKeyPositon::new(0));
-            idx.insert("b".into(), UniqueKeyPositon::new(1));
-            idx.insert("c".into(), UniqueKeyPositon::new(2));
-            idx.insert("s".into(), UniqueKeyPositon::new(4));
+            idx.insert("a".into(), UniqueKeyPositon::from_pos(0));
+            idx.insert("b".into(), UniqueKeyPositon::from_pos(1));
+            idx.insert("c".into(), UniqueKeyPositon::from_pos(2));
+            idx.insert("s".into(), UniqueKeyPositon::from_pos(4));
             Self { idx }
         }
     }
 
-    impl<X: KeyPosition<usize>> MapIndex<&str, X> {
+    impl<P: KeyPosition<Pos = usize>> MapIndex<&str, P> {
         fn from_vec(l: Vec<&'static str>) -> Self {
-            let mut idx = HashMap::<&str, X>::new();
+            let mut idx = HashMap::<&str, P>::new();
 
             l.into_iter()
                 .enumerate()
@@ -233,7 +233,7 @@ mod tests {
                         x.add_pos(p);
                     }
                     None => {
-                        idx.insert(s, X::new(p));
+                        idx.insert(s, P::from_pos(p));
                     }
                 });
 
@@ -241,12 +241,13 @@ mod tests {
         }
     }
 
-    impl<Q, K, X: KeyPosition<usize>> Lookup<&Q> for MapIndex<K, X>
+    impl<Q, K, P> Lookup<&Q> for MapIndex<K, P>
     where
         K: Borrow<Q> + Hash + Eq,
         Q: Hash + Eq + ?Sized,
+        P: KeyPositionAsSlice,
     {
-        type Pos = usize;
+        type Pos = P::Pos;
 
         fn pos_by_key(&self, key: &Q) -> &[Self::Pos] {
             match self.idx.get(key) {
@@ -286,7 +287,7 @@ mod tests {
     #[case::m_z_a_m_m(vec!["m", "z", "a", "m", "m"], vec![&5, &1])]
     fn iter_unique_positions(#[case] keys: Vec<&str>, #[case] expected: Vec<&usize>) {
         let items = vec!["x", "a", "b", "c", "y", "z"];
-        let map = MapIndex::<&str, UniqueKeyPositon>::from_vec(items);
+        let map = MapIndex::<&str, UniqueKeyPositon<usize>>::from_vec(items);
         assert_eq!(expected, map.pos_by_many_keys(keys).collect::<Vec<_>>());
     }
 
@@ -305,7 +306,7 @@ mod tests {
     #[case::a_double_x(vec!["a", "x"], vec![&1, &0, &4])]
     fn iter_multi_positions(#[case] keys: Vec<&str>, #[case] expected: Vec<&usize>) {
         let items = vec!["x", "a", "b", "c", "x", "y", "z"];
-        let map = MapIndex::<&str, MultiKeyPositon>::from_vec(items);
+        let map = MapIndex::<&str, MultiKeyPositon<usize>>::from_vec(items);
         assert_eq!(expected, map.pos_by_many_keys(keys).collect::<Vec<_>>());
     }
 }

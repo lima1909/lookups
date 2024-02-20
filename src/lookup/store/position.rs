@@ -6,16 +6,36 @@
 /// - `unique`: for a given `Key` exist none or one `Position`
 /// - `multi`:  for a given `Key` exist none or many `Position`
 ///
-pub trait KeyPosition<P> {
+pub trait KeyPosition {
+    type Pos;
+
     /// Create a new `KeyPosition` with the initial value `pos`.
-    fn new(pos: P) -> Self;
+    fn from_pos(pos: Self::Pos) -> Self;
 
     /// Add a new `pos`.
-    fn add_pos(&mut self, pos: P);
+    fn add_pos(&mut self, pos: Self::Pos);
+
     /// Remove a `pos`. If the return value is `true`, than the last position was removed.
-    fn remove_pos(&mut self, pos: &P) -> bool;
-    /// Returns all saved `pos` as slice.
-    fn as_slice(&self) -> &[P];
+    fn remove_pos(&mut self, pos: &Self::Pos) -> bool;
+}
+
+/// Convert the all position from `KeyPosition` into a Slice.
+pub trait KeyPositionAsSlice {
+    type Pos;
+
+    /// Returns all saved `position` as slice.
+    fn as_slice(&self) -> &[Self::Pos];
+}
+
+impl<K> KeyPositionAsSlice for &K
+where
+    K: KeyPositionAsSlice,
+{
+    type Pos = K::Pos;
+
+    fn as_slice(&self) -> &[Self::Pos] {
+        (*self).as_slice()
+    }
 }
 
 /// `UniqueKeyPositon` is an optional container for none or maximal one `Key` position.
@@ -23,17 +43,17 @@ pub trait KeyPosition<P> {
 /// ## Panics
 /// Panics, the Posion must be unique, so you can not add a further `pos` ([UniqueKeyPositon::add_pos]) .
 ///
-#[derive(Debug, Clone, PartialEq)]
-#[repr(transparent)]
-pub struct UniqueKeyPositon<P = usize>(Option<[P; 1]>);
+pub type UniqueKeyPositon<P> = Option<P>;
 
-impl<P> KeyPosition<P> for UniqueKeyPositon<P>
+impl<P> KeyPosition for UniqueKeyPositon<P>
 where
     P: PartialEq,
 {
+    type Pos = P;
+
     /// Create a new Position.
-    fn new(pos: P) -> Self {
-        Self(Some([pos]))
+    fn from_pos(pos: P) -> Self {
+        Some(pos)
     }
 
     /// ## Panics
@@ -46,56 +66,60 @@ where
     /// If it is Some, than remove the `pos` and set the value to Nome.
     /// If it is already None, than ignore the `pos`.
     fn remove_pos(&mut self, pos: &P) -> bool {
-        match self.0.as_ref() {
-            Some(inner) if &inner[0] == pos => {
-                self.0 = None;
+        match self.as_ref() {
+            Some(p) if p == pos => {
+                *self = None;
                 true
             }
             Some(_) => false,
             None => true,
         }
     }
+}
 
-    /// Returns empty slice, if the value is None, otherwise return a slice with the `pos`.
-    fn as_slice(&self) -> &[P] {
-        self.0
-            .as_ref()
-            .map_or_else(|| [].as_slice(), |idx| idx.as_slice())
+impl<P> KeyPositionAsSlice for UniqueKeyPositon<P> {
+    type Pos = P;
+
+    fn as_slice(&self) -> &[Self::Pos] {
+        self.as_slice()
     }
 }
 
 /// `MultiKeyPositon` is an container for empty or many `Key` positions.
 ///
-#[derive(Debug, Clone, PartialEq)]
-#[repr(transparent)]
-pub struct MultiKeyPositon<P = usize>(Vec<P>);
+pub type MultiKeyPositon<P> = Vec<P>;
 
-impl<P> KeyPosition<P> for MultiKeyPositon<P>
+impl<P> KeyPosition for MultiKeyPositon<P>
 where
     P: Ord + PartialEq,
 {
+    type Pos = P;
+
     /// Create a new Position collection with the initial pos.
-    fn new(pos: P) -> Self {
-        Self(vec![pos])
+    fn from_pos(pos: P) -> Self {
+        vec![pos]
     }
 
     /// Add new Positin to a sorted collection.
     /// Duplicate Positions are ignored.
     fn add_pos(&mut self, pos: P) {
-        if let Err(idx) = self.0.binary_search(&pos) {
-            self.0.insert(idx, pos);
+        if let Err(idx) = self.binary_search(&pos) {
+            self.insert(idx, pos);
         }
     }
 
     /// Remove one Position and return left free Indices.
     fn remove_pos(&mut self, pos: &P) -> bool {
-        self.0.retain(|v| v != pos);
-        self.0.is_empty()
+        self.retain(|v| v != pos);
+        self.is_empty()
     }
+}
 
-    /// Returns all saved `pos` as slice.
-    fn as_slice(&self) -> &[P] {
-        self.0.as_ref()
+impl<P> KeyPositionAsSlice for MultiKeyPositon<P> {
+    type Pos = P;
+
+    fn as_slice(&self) -> &[Self::Pos] {
+        self.as_slice()
     }
 }
 
@@ -105,27 +129,21 @@ mod tests {
     mod unique_key_position {
         use super::super::*;
 
-        impl<P> From<[P; 1]> for UniqueKeyPositon<P> {
-            fn from(index: [P; 1]) -> Self {
-                Self(Some(index))
-            }
-        }
-
         #[test]
         fn unique_new() {
-            assert_eq!(UniqueKeyPositon::new(7), [7; 1].into());
-            assert_eq!(UniqueKeyPositon::new(7).as_slice(), &[7]);
+            assert_eq!(UniqueKeyPositon::from_pos(7), Some(7));
+            assert_eq!(UniqueKeyPositon::from_pos(7).as_slice(), &[7]);
         }
 
         #[test]
         #[should_panic]
         fn add_pos_with_panic() {
-            UniqueKeyPositon::new(1).add_pos(2);
+            UniqueKeyPositon::from_pos(1).add_pos(2);
         }
 
         #[test]
         fn as_position() {
-            let mut x = UniqueKeyPositon::new(1);
+            let mut x = UniqueKeyPositon::from_pos(1);
 
             assert_eq!(x.as_slice(), &[1; 1]);
 
@@ -135,7 +153,7 @@ mod tests {
 
         #[test]
         fn remove_pos() {
-            let mut x = UniqueKeyPositon::new(1);
+            let mut x = UniqueKeyPositon::from_pos(1);
 
             // invalid key
             assert!(!x.remove_pos(&2));
@@ -154,13 +172,13 @@ mod tests {
 
         #[test]
         fn multi_new() {
-            assert_eq!(MultiKeyPositon::new(7), MultiKeyPositon(vec![7]));
-            assert_eq!(MultiKeyPositon::new(7).as_slice(), &[7]);
+            assert_eq!(MultiKeyPositon::from_pos(7), vec![7]);
+            assert_eq!(MultiKeyPositon::from_pos(7).as_slice(), &[7]);
         }
 
         #[test]
         fn multi_position_and_are_ordered() {
-            let mut m = MultiKeyPositon::new(2);
+            let mut m = MultiKeyPositon::from_pos(2);
             assert_eq!(&[2], m.as_slice());
 
             m.add_pos(1);
@@ -172,7 +190,7 @@ mod tests {
 
         #[test]
         fn multi_duplicate() {
-            let mut m = MultiKeyPositon::new(1);
+            let mut m = MultiKeyPositon::from_pos(1);
             assert_eq!(&[1], m.as_slice());
 
             // ignore add: 1, 1 exists already
@@ -182,7 +200,7 @@ mod tests {
 
         #[test]
         fn multi_ordered() {
-            let mut m = MultiKeyPositon::new(5);
+            let mut m = MultiKeyPositon::from_pos(5);
             assert_eq!(&[5], m.as_slice());
 
             m.add_pos(3);
@@ -194,7 +212,7 @@ mod tests {
 
         #[test]
         fn remove() {
-            let mut m = MultiKeyPositon::new(5);
+            let mut m = MultiKeyPositon::from_pos(5);
             m.add_pos(3);
             m.add_pos(2);
 

@@ -107,7 +107,7 @@ impl<S, T> Deref for LVec<S, T> {
 ///
 /// use lookups::{collections::ro::LHashMap, lookup::UniquePosIndex};
 ///
-/// let map = LHashMap::<UniquePosIndex<_>, _, _>::new(|p| p.id, data);
+/// let map = LHashMap::<UniquePosIndex<_, _>, _, _>::new(|p| p.id, data);
 ///
 /// assert!(map.contains_key("Paul"));     // conventionally HashMap access with String - Key
 /// assert!(map.lkup().contains_key(2)); // lookup with usize - Key
@@ -195,7 +195,7 @@ mod tests {
             ("Audi".into(), Car(99, "Audi".into())),
             ("BMW".into(), Car(1, "BMW".into())),
         ]);
-        let m = LHashMap::<MultiPosIndex<String>, _, _>::new(Car::id, items);
+        let m = LHashMap::<MultiPosIndex<_, String>, _, _>::new(Car::id, items);
 
         assert!(m.contains_key("BMW"));
 

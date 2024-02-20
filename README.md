@@ -45,7 +45,7 @@ let cars = [
 use lookups::{collections::ro::LHashMap, lookup::UniquePosIndex};
 
 // create a new Lookup HashMap: LHashMap with a UniquePosIndex
-let map = LHashMap::<UniquePosIndex<_>, _, _>::new(|c| c.id, cars);
+let map = LHashMap::<UniquePosIndex<_, _>, _, _>::new(|c| c.id, cars);
 
 // conventionally HashMap access with Key (name: String)
 assert!(map.contains_key("VW"));
