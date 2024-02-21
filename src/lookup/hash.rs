@@ -43,23 +43,22 @@ where
     }
 }
 
-impl<'a, Q, K, P> ViewCreator<'a, &'a Q> for HashLookup<K, P>
+impl<'a, K, P> ViewCreator<'a> for HashLookup<K, P>
 where
-    K: Borrow<Q> + Hash + Eq + Clone,
-    Q: Hash + Eq + ?Sized,
+    K: Hash + Eq + Clone,
     P: KeyPositionAsSlice + 'a,
 {
     type Key = K;
     type Lookup = HashLookup<K, &'a P>;
 
-    fn create_view<It>(&'a self, keys: It) -> View<Self::Lookup, &'a Q>
+    fn create_view<It>(&'a self, keys: It) -> View<Self::Lookup>
     where
         It: IntoIterator<Item = Self::Key>,
     {
         let mut map = HashMap::<K, &P>::with_capacity(self.0.len());
 
         for key in keys {
-            if let Some(p) = self.0.get(key.borrow()) {
+            if let Some(p) = self.0.get(&key) {
                 map.insert(key.clone(), p);
             }
         }

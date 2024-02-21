@@ -48,7 +48,7 @@ where
     }
 }
 
-impl<'a, K, P> ViewCreator<'a, K> for IndexLookup<K, P>
+impl<'a, K, P> ViewCreator<'a> for IndexLookup<K, P>
 where
     K: Into<usize> + Clone,
     P: KeyPositionAsSlice + 'a,
@@ -56,7 +56,7 @@ where
     type Key = K;
     type Lookup = IndexLookup<K, &'a P>;
 
-    fn create_view<It>(&'a self, keys: It) -> View<Self::Lookup, K>
+    fn create_view<It>(&'a self, keys: It) -> View<Self::Lookup>
     where
         It: IntoIterator<Item = Self::Key>,
     {

@@ -2,8 +2,6 @@
 //!
 pub mod position;
 
-use std::marker::PhantomData;
-
 pub use crate::lookup::Itemer;
 pub use position::{KeyPosition, KeyPositionAsSlice, MultiKeyPositon, UniqueKeyPositon};
 
@@ -40,14 +38,12 @@ pub trait Store {
 pub trait Lookup<Q> {
     type Pos;
 
+    /// Check, that the given key exist.
+    fn key_exist(&self, key: Q) -> bool;
+
     /// Returns all known positions for a given `Key`.
     /// If the `Key` not exist, than is the slice empty.
     fn pos_by_key(&self, key: Q) -> &[Self::Pos];
-
-    /// Check, that the given key exist.
-    fn key_exist(&self, key: Q) -> bool {
-        !self.pos_by_key(key).is_empty()
-    }
 
     /// Returns all known positions for a given iterator of `Key`s.
     ///
@@ -71,6 +67,10 @@ where
 {
     type Pos = L::Pos;
 
+    fn key_exist(&self, key: Q) -> bool {
+        (*self).key_exist(key)
+    }
+
     fn pos_by_key(&self, key: Q) -> &[Self::Pos] {
         (*self).pos_by_key(key)
     }
@@ -78,41 +78,42 @@ where
 
 /// The Idea of a `View` is like database view.
 /// They shows a subset of `Keys` which are saved in the [`crate::lookup::store::Store`].
-pub trait ViewCreator<'a, Q> {
+pub trait ViewCreator<'a> {
     type Key;
-    type Lookup: Lookup<Q>;
+    type Lookup;
 
     /// Create a `View` by the given `Key`s.
-    fn create_view<It>(&'a self, keys: It) -> View<Self::Lookup, Q>
+    fn create_view<It>(&'a self, keys: It) -> View<Self::Lookup>
     where
         It: IntoIterator<Item = Self::Key>;
 }
 
 /// A wrapper for a `Lookup` implementation
 #[repr(transparent)]
-pub struct View<L, Q>(L, PhantomData<Q>);
+pub struct View<L>(L);
 
-impl<L, Q> View<L, Q>
-where
-    L: Lookup<Q>,
-{
+impl<L> View<L> {
     pub fn new(lookup: L) -> Self {
-        Self(lookup, PhantomData)
+        Self(lookup)
     }
 }
 
-impl<L, Q> Lookup<Q> for View<L, Q>
+impl<L, Q> Lookup<Q> for View<L>
 where
     L: Lookup<Q>,
 {
     type Pos = L::Pos;
+
+    fn key_exist(&self, key: Q) -> bool {
+        self.0.key_exist(key)
+    }
 
     fn pos_by_key(&self, key: Q) -> &[Self::Pos] {
         self.0.pos_by_key(key)
     }
 }
 
-impl<L, Q> std::ops::Deref for View<L, Q>
+impl<L> std::ops::Deref for View<L>
 where
     L: std::ops::Deref,
 {
@@ -254,6 +255,10 @@ mod tests {
                 Some(i) => i.as_slice(),
                 None => &[],
             }
+        }
+
+        fn key_exist(&self, key: &Q) -> bool {
+            self.idx.contains_key(key)
         }
     }
 

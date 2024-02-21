@@ -48,11 +48,13 @@ pub struct LVec<S, I> {
     items: Vec<I>,
 }
 
-impl<S, I> LVec<S, I> {
+impl<S, I> LVec<S, I>
+where
+    S: Store<Pos = usize>,
+{
     pub fn new<F, V>(field: F, items: V) -> Self
     where
         F: Fn(&I) -> S::Key,
-        S: Store<Pos = usize>,
         V: Into<Vec<I>>,
     {
         let v = items.into();
@@ -67,13 +69,10 @@ impl<S, I> LVec<S, I> {
         Retriever::new(&self.store, &self.items)
     }
 
-    pub fn create_lkup_view<'a, It, Q>(
-        &'a self,
-        keys: It,
-    ) -> Retriever<'_, View<S::Lookup, Q>, Vec<I>>
+    pub fn create_lkup_view<'a, It>(&'a self, keys: It) -> Retriever<'_, View<S::Lookup>, Vec<I>>
     where
-        S: ViewCreator<'a, Q>,
-        It: IntoIterator<Item = S::Key>,
+        S: ViewCreator<'a>,
+        It: IntoIterator<Item = <S as ViewCreator<'a>>::Key>,
     {
         let view = self.store.create_view(keys);
         Retriever::new(view, &self.items)
@@ -130,11 +129,13 @@ pub struct LHashMap<S, K, V> {
     items: crate::HashMap<K, V>,
 }
 
-impl<S, K, V> LHashMap<S, K, V> {
+impl<S, K, V> LHashMap<S, K, V>
+where
+    S: Store<Pos = K>,
+{
     pub fn new<F, M>(field: F, items: M) -> Self
     where
         F: Fn(&V) -> S::Key,
-        S: Store<Pos = K>,
         M: Into<crate::HashMap<K, V>>,
         K: Clone,
     {
@@ -150,13 +151,13 @@ impl<S, K, V> LHashMap<S, K, V> {
         Retriever::new(&self.store, &self.items)
     }
 
-    pub fn create_lkup_view<'a, It, Q>(
+    pub fn create_lkup_view<'a, It>(
         &'a self,
         keys: It,
-    ) -> Retriever<'_, View<S::Lookup, Q>, crate::HashMap<K, V>>
+    ) -> Retriever<'_, View<S::Lookup>, crate::HashMap<K, V>>
     where
-        S: ViewCreator<'a, Q>,
-        It: IntoIterator<Item = S::Key>,
+        S: ViewCreator<'a>,
+        It: IntoIterator<Item = <S as ViewCreator<'a>>::Key>,
     {
         let view = self.store.create_view(keys);
         Retriever::new(view, &self.items)
@@ -210,7 +211,7 @@ mod tests {
     #[test]
     fn lvec_u16() {
         let items = vec![Car(99, "Audi".into()), Car(1, "BMW".into())];
-        let v = LVec::<UniquePosIndex<_>, _>::new(Car::id, items);
+        let v = LVec::<UniquePosIndex, _>::new(Car::id, items);
 
         assert!(v.lkup().contains_key(1));
         assert!(v.lkup().contains_key(99));

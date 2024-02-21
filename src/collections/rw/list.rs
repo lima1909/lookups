@@ -62,13 +62,10 @@ where
         Retriever::new(&self.store, &self.items)
     }
 
-    pub fn create_lkup_view<'a, It, Q>(
-        &'a self,
-        keys: It,
-    ) -> Retriever<'_, View<S::Lookup, Q>, Vec<I>>
+    pub fn create_lkup_view<'a, It>(&'a self, keys: It) -> Retriever<'_, View<S::Lookup>, Vec<I>>
     where
-        S: ViewCreator<'a, Q>,
-        It: IntoIterator<Item = <S as ViewCreator<'a, Q>>::Key>,
+        S: ViewCreator<'a>,
+        It: IntoIterator<Item = <S as ViewCreator<'a>>::Key>,
     {
         let view = self.store.create_view(keys);
         Retriever::new(view, &self.items)
@@ -133,7 +130,7 @@ mod tests {
             v.lkup().get_by_key("Anna").next().unwrap()
         );
 
-        let view = v.create_lkup_view::<_, &str>([String::from("Paul")]);
+        let view = v.create_lkup_view([String::from("Paul")]);
         assert_eq!(
             &Person::new(0, "Paul"),
             view.get_by_key("Paul").next().unwrap()
