@@ -1,17 +1,17 @@
-use crate::{
-    collections::Retriever,
-    lookup::store::{Store, View, ViewCreator},
-};
+//! `Read write` implementations for lookup collections `List` like `Vec`
+//!
+use std::ops::Deref;
+
+use crate::{collections::list::ro, lookup::store::Store};
 
 ///
 /// `List` is a list with one `Store`.
-/// This means, one `Index`.
+/// This means, one `Lookup`.
 ///
 #[derive(Debug)]
 pub struct LVec<S, I, F> {
-    store: S,
-    items: Vec<I>,
     field: F,
+    inner: ro::LVec<S, I>,
 }
 
 impl<S, I, F> LVec<S, I, F>
@@ -19,68 +19,81 @@ where
     S: Store<Pos = usize>,
     F: Fn(&I) -> S::Key,
 {
-    pub fn from_iter<It>(field: F, iter: It) -> Self
+    pub fn new<V>(field: F, items: V) -> Self
     where
-        It: IntoIterator<Item = I> + ExactSizeIterator,
+        F: Clone,
+        V: Into<Vec<I>>,
     {
-        let mut s = Self {
-            field,
-            store: S::with_capacity(iter.len()),
-            items: Vec::with_capacity(iter.len()),
-        };
-
-        iter.into_iter().for_each(|item| {
-            s.push(item);
-        });
-
-        s
+        Self {
+            field: field.clone(),
+            inner: ro::LVec::new(field, items),
+        }
     }
 
     /// Append a new `Item` to the List.
     pub fn push(&mut self, item: I) -> usize {
-        push(&mut self.items, item, |i, idx| {
-            self.store.insert((self.field)(i), idx);
+        push(&mut self.inner.items, item, |i, idx| {
+            self.inner.store.insert((self.field)(i), idx);
         })
     }
 
     /// Update an existing `Item` on given `Position` from the List.
     /// If the `Position` exist, the method returns an `Some` with reference to the updated Item.
     /// If not, the method returns `None`.
-    pub fn update<U>(&mut self, pos: usize, mut update: U) -> Option<&I>
+    pub fn update<U>(&mut self, pos: usize, mut update_fn: U) -> Option<&I>
     where
         U: FnMut(&mut I),
     {
-        self.items.get_mut(pos).map(|item| {
-            let key = (self.field)(item);
-            update(item);
-            self.store.update(key, pos, (self.field)(item));
-            &*item
-        })
+        update(
+            self.inner.items.as_mut_slice(),
+            pos,
+            &self.field,
+            &mut update_fn,
+            |old_key, pos, new_key| {
+                self.inner.store.update(old_key, pos, new_key);
+            },
+        )
     }
+}
 
-    pub fn lkup(&self) -> Retriever<'_, &S, Vec<I>> {
-        Retriever::new(&self.store, &self.items)
-    }
+impl<S, I, F> Deref for LVec<S, I, F> {
+    type Target = ro::LVec<S, I>;
 
-    pub fn create_lkup_view<'a, It>(&'a self, keys: It) -> Retriever<'_, View<S::Lookup>, Vec<I>>
-    where
-        S: ViewCreator<'a>,
-        It: IntoIterator<Item = <S as ViewCreator<'a>>::Key>,
-    {
-        let view = self.store.create_view(keys);
-        Retriever::new(view, &self.items)
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 
 #[inline]
-fn push<I, Trigger>(items: &mut Vec<I>, item: I, mut insert: Trigger) -> usize
+fn push<I, Trigger>(items: &mut Vec<I>, item: I, mut trigger: Trigger) -> usize
 where
     Trigger: FnMut(&I, usize),
 {
     let idx = items.len();
-    insert(&item, idx);
+    trigger(&item, idx);
     items.push(item);
     idx
+}
+
+#[inline]
+fn update<'a, I, F, K, U, Trigger>(
+    items: &'a mut [I],
+    pos: usize,
+    field: &F,
+    mut update: U,
+    mut trigger: Trigger,
+) -> Option<&'a I>
+where
+    F: Fn(&I) -> K,
+    U: FnMut(&mut I),
+    Trigger: FnMut(K, usize, K),
+{
+    items.get_mut(pos).map(|item| {
+        let old_key = field(item);
+        update(item);
+        trigger(old_key, pos, field(item));
+        &*item
+    })
 }
 
 #[cfg(test)]
@@ -109,10 +122,11 @@ mod tests {
 
     #[test]
     fn lvec() {
-        let persons = vec![Person::new(0, "Paul")];
-
-        let mut v = LVec::<MultiPosHash, _, _>::from_iter(Person::name, persons.into_iter());
+        let mut v = LVec::<MultiPosHash, _, _>::new(Person::name, [Person::new(0, "Paul")]);
         v.push(Person::new(1, "Anna"));
+
+        assert!(!v.is_empty());
+        assert_eq!(2, v.len());
 
         assert_eq!(
             &Person::new(1, "Anna"),

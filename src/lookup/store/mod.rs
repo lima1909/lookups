@@ -2,7 +2,6 @@
 //!
 pub mod position;
 
-pub use crate::lookup::Itemer;
 pub use position::{KeyPosition, KeyPositionAsSlice, MultiKeyPositon, UniqueKeyPositon};
 
 /// Store is an container which the mapping between the `Key`s and they `Position`s stored.

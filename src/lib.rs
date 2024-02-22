@@ -28,7 +28,7 @@
 //!     (String::from("VW"),   Car{id: 2, name: "VW".into()}),
 //! ];
 //!
-//! use lookups::{collections::ro::LHashMap, lookup::UniquePosIndex};
+//! use lookups::{collections::map::ro::LHashMap, lookup::UniquePosIndex};
 //!
 //! // create a new Lookup HashMap: LHashMap with a UniquePosIndex
 //! let map = LHashMap::<UniquePosIndex<_, _>, _, _>::new(|c| c.id, cars);

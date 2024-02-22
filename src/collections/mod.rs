@@ -1,10 +1,24 @@
 //! The `collections` module contains the collections implementations which are using the lookups.
 //!
 
-use crate::lookup::{store::Lookup, Itemer};
+pub mod list;
+pub mod map;
 
-pub mod ro;
-pub mod rw;
+use crate::lookup::store::Lookup;
+
+/// [`Itemer`] returns an Item which is stored at a given `Position` (Index)
+/// in a collection (Vec, Array, Map ...).
+///
+pub trait Itemer<Pos> {
+    type Output: ?Sized;
+
+    /// Get the Item based on the given Position.
+    ///
+    /// #Panic
+    ///
+    /// If no Item exist for the given Position.
+    fn item(&self, pos: &Pos) -> &Self::Output;
+}
 
 /// A `Retriever` is the main interface for get Items by an given `Lookup`.
 pub struct Retriever<'a, L, I> {
@@ -24,7 +38,7 @@ impl<'a, L, I> Retriever<'a, L, I> {
     ///
     /// ```
     /// use lookups::lookup::MultiPosIndex;
-    /// use lookups::collections::ro::LVec;
+    /// use lookups::collections::list::ro::LVec;
     ///
     /// #[derive(Debug, PartialEq)]
     /// pub struct Car(usize, String);
@@ -49,7 +63,7 @@ impl<'a, L, I> Retriever<'a, L, I> {
     ///
     /// ```
     /// use lookups::lookup::MultiPosIndex;
-    /// use lookups::collections::ro::LVec;
+    /// use lookups::collections::list::ro::LVec;
     ///
     /// #[derive(Debug, PartialEq)]
     /// pub struct Car(usize, String);
@@ -64,13 +78,16 @@ impl<'a, L, I> Retriever<'a, L, I> {
     ///
     /// assert_eq!(vec![&Car(1, "Audi".into())], v.lkup().get_by_key(1).collect::<Vec<_>>());
     /// ```
-    pub fn get_by_key<Q>(&self, key: Q) -> impl Iterator<Item = &I::Output>
+    pub fn get_by_key<Q>(&'a self, key: Q) -> impl Iterator<Item = &'a I::Output>
     where
         I: Itemer<L::Pos>,
         L: Lookup<Q>,
         Q: 'a,
     {
-        self.items.items(self.lookup.pos_by_key(key).iter())
+        self.lookup
+            .pos_by_key(key)
+            .iter()
+            .map(|p| self.items.item(p))
     }
 
     /// Combines all given `keys` with an logical `OR`.
@@ -84,7 +101,7 @@ impl<'a, L, I> Retriever<'a, L, I> {
     ///
     /// ```
     /// use lookups::lookup::MultiPosIndex;
-    /// use lookups::collections::ro::LVec;
+    /// use lookups::collections::list::ro::LVec;
     ///
     /// #[derive(Debug, PartialEq)]
     /// pub struct Car(usize, String);
@@ -102,14 +119,16 @@ impl<'a, L, I> Retriever<'a, L, I> {
     ///     v.lkup().get_by_many_keys([5, 1]).collect::<Vec<_>>()
     /// );
     /// ```
-    pub fn get_by_many_keys<It, Q>(&self, keys: It) -> impl Iterator<Item = &I::Output>
+    pub fn get_by_many_keys<It, Q>(&'a self, keys: It) -> impl Iterator<Item = &'a I::Output>
     where
         It: IntoIterator<Item = Q> + 'a,
         I: Itemer<L::Pos>,
         L: Lookup<Q>,
         Q: 'a,
     {
-        self.items.items(self.lookup.pos_by_many_keys(keys))
+        self.lookup
+            .pos_by_many_keys(keys)
+            .map(|p| self.items.item(p))
     }
 }
 
