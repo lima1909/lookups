@@ -3,14 +3,17 @@
 //! ## Advantages:
 //! - all advantages, which has a hashing procedure
 //!
-use crate::{
-    lookup::store::{
-        KeyPosition, KeyPositionAsSlice, Lookup, MultiKeyPositon, Store, UniqueKeyPositon, View,
-        ViewCreator,
-    },
-    HashMap,
+use crate::lookup::store::{
+    KeyPosition, KeyPositionAsSlice, Lookup, MultiKeyPositon, Store, UniqueKeyPositon, View,
+    ViewCreator,
 };
 use std::{borrow::Borrow, hash::Hash, ops::Deref};
+
+#[cfg(feature = "hashbrown")]
+type HashMap<K, V> = hashbrown::HashMap<K, V>;
+
+#[cfg(not(feature = "hashbrown"))]
+type HashMap<K, V> = std::collections::HashMap<K, V>;
 
 /// Implementation for a `HashLookup` with unique `Position`.
 pub type UniquePosHash<K = String, X = usize> = HashLookup<K, UniqueKeyPositon<X>>;

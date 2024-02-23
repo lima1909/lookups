@@ -15,7 +15,7 @@ use std::ops::Deref;
 ///     name: String,
 /// }
 ///
-/// use lookups::{collections::list::rw::LkupVec, lookup::MultiPosHash};
+/// use lookups::{collections::list::LkupVec, lookup::MultiPosHash};
 ///
 /// let mut vec = LkupVec::<MultiPosHash, Person, _>::new(|p| p.name.clone());
 ///
@@ -41,8 +41,8 @@ use std::ops::Deref;
 
 #[derive(Debug)]
 pub struct LkupVec<S, I, F> {
-    inner: ro::LkupList<S, Vec<I>>,
     field: F,
+    inner: ro::LkupList<S, Vec<I>>,
 }
 
 impl<S, I, F> LkupVec<S, I, F>

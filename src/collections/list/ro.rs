@@ -1,6 +1,6 @@
-//! `Read only` implementations for lookup collections `LkupList` like `Vec`, `Slice`, ...
+//! `Read only` implementations for lookup collections [`LkupList`] like `Vec`, `Slice`, ...
 //!
-use crate::collections::{list::ListIndex, Retriever, StoreCreator};
+use crate::collections::{list::ListIndex, Retriever};
 use crate::lookup::store::{Store, View, ViewCreator};
 use std::ops::{Deref, Index};
 
@@ -15,11 +15,9 @@ use std::ops::{Deref, Index};
 ///     name: String,
 /// }
 ///
-/// let data = [
-///     Person{id: 0, name: "Paul".into()},
-///     Person{id: 5, name: "Mario".into()},
-///     Person{id: 2, name: "Jasmin".into()},
-///     ];
+/// let data = [Person{id: 0, name: "Paul".into()},
+///             Person{id: 5, name: "Mario".into()},
+///             Person{id: 2, name: "Jasmin".into()}];
 ///
 /// use lookups::{collections::list::ro::LkupList, lookup::UniquePosHash};
 ///
@@ -46,17 +44,24 @@ pub struct LkupList<S, I> {
     pub(crate) items: I,
 }
 
-impl<S, I> LkupList<S, I> {
-    pub fn new<F>(field: F, items: I) -> Self
+impl<S, I> LkupList<S, I>
+where
+    S: Store<Pos = usize>,
+    I: Index<usize>,
+{
+    pub fn new<F, T>(field: F, items: I) -> Self
     where
-        S: Store,
-        I: StoreCreator<S> + Index<usize>,
-        F: Fn(&I::Item) -> S::Key,
+        I: AsRef<[T]>,
+        F: Fn(&T) -> S::Key,
     {
-        Self {
-            store: items.create_store(&field),
-            items,
-        }
+        let items_ref = items.as_ref();
+        let mut store = S::with_capacity(items_ref.len());
+        items_ref
+            .iter()
+            .enumerate()
+            .for_each(|(pos, item)| store.insert(field(item), pos));
+
+        Self { store, items }
     }
 
     pub fn lkup(&self) -> Retriever<&S, ListIndex<'_, I>> {
