@@ -4,20 +4,8 @@
 pub mod list;
 pub mod map;
 
-use crate::lookup::store::{Lookup, Store};
+use crate::lookup::store::Lookup;
 use std::ops::Index;
-
-/// Create a `Store` for a given collection.
-pub trait StoreCreator<S>
-where
-    S: Store,
-{
-    type Item;
-
-    fn create_store<F>(&self, field: &F) -> S
-    where
-        F: Fn(&Self::Item) -> S::Key;
-}
 
 /// A `Retriever` is the main interface for get Items by an given `Lookup`.
 pub struct Retriever<L, I> {

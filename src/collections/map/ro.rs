@@ -1,9 +1,9 @@
 //! `Read only` implementations for lookup collections `LkupMap` like `HashMap`, `BTreeMap`
 //!
 
-use crate::collections::{map::MapIndex, Retriever, StoreCreator};
+use crate::collections::{map::MapIndex, Retriever};
 use crate::lookup::store::{Store, View, ViewCreator};
-use std::ops::Deref;
+use std::{hash::Hash, ops::Deref};
 
 /// [`LkupMap`] is a read only `HashMap` which is extended by a given `Lookup` implementation.
 ///
@@ -16,14 +16,15 @@ use std::ops::Deref;
 ///     name: String,
 /// }
 ///
-/// let mut persons = std::collections::HashMap::new();
-/// persons.insert(String::from("Paul")  , Person{id: 0, name: "Paul".into()});
-/// persons.insert(String::from("Mario") , Person{id: 5, name: "Mario".into()});
-/// persons.insert(String::from("Jasmin"), Person{id: 2, name: "Jasmin".into()});
+/// let persons = [
+///     (String::from("Paul")  , Person{id: 0, name: "Paul".into()}),
+///     (String::from("Mario") , Person{id: 5, name: "Mario".into()}),
+///     (String::from("Jasmin"), Person{id: 2, name: "Jasmin".into()})
+/// ];
 ///
-/// use lookups::{collections::map::ro::LkupMap, lookup::UniquePosIndex};
+/// use lookups::{collections::map::ro::LkupHashMap, lookup::UniquePosIndex};
 ///
-/// let map = LkupMap::<UniquePosIndex<_, _>, _>::new(|p| p.id, persons);
+/// let map = LkupHashMap::<UniquePosIndex<_, _>, _, _>::from_iter(|p| p.id, persons);
 ///
 /// assert!(map.contains_key("Paul"));     // conventionally HashMap access with String - Key
 /// assert!(map.lkup().contains_key(2)); // lookup with usize - Key
@@ -41,24 +42,62 @@ use std::ops::Deref;
 /// );
 /// ```
 ///
-pub struct LkupMap<S, I> {
+
+#[cfg(feature = "hashbrown")]
+type HashMap<K, V> = hashbrown::HashMap<K, V>;
+
+#[cfg(not(feature = "hashbrown"))]
+type HashMap<K, V> = std::collections::HashMap<K, V>;
+
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct LkupHashMap<S, K, V>(LkupBaseMap<S, HashMap<K, V>>);
+
+impl<S, K, V> LkupHashMap<S, K, V>
+where
+    S: Store<Pos = K>,
+{
+    pub fn new<F>(field: F, map: HashMap<K, V>) -> Self
+    where
+        F: Fn(&V) -> S::Key,
+        K: Clone,
+    {
+        let mut store = S::with_capacity(map.len());
+        map.iter()
+            .map(|(k, v)| (field(v), k.clone()))
+            .for_each(|(key, pos)| store.insert(key, pos));
+
+        Self(LkupBaseMap { store, items: map })
+    }
+
+    pub fn from_iter<I, F>(field: F, iter: I) -> Self
+    where
+        I: IntoIterator<Item = (K, V)>,
+        F: Fn(&V) -> S::Key,
+        K: Hash + Eq + Clone,
+    {
+        Self::new(field, HashMap::from_iter(iter))
+    }
+}
+
+impl<S, K, V> Deref for LkupHashMap<S, K, V> {
+    type Target = LkupBaseMap<S, HashMap<K, V>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Debug)]
+pub struct LkupBaseMap<S, I> {
     store: S,
     items: I,
 }
 
-impl<S, I> LkupMap<S, I> {
-    pub fn new<F>(field: F, items: I) -> Self
-    where
-        S: Store,
-        I: StoreCreator<S>,
-        F: Fn(&I::Item) -> S::Key,
-    {
-        Self {
-            store: items.create_store(&field),
-            items,
-        }
-    }
-
+impl<S, I> LkupBaseMap<S, I>
+where
+    S: Store,
+{
     pub fn lkup(&self) -> Retriever<&S, MapIndex<'_, I>> {
         Retriever::new(&self.store, MapIndex(&self.items))
     }
@@ -76,7 +115,7 @@ impl<S, I> LkupMap<S, I> {
     }
 }
 
-impl<S, I> Deref for LkupMap<S, I> {
+impl<S, I> Deref for LkupBaseMap<S, I> {
     type Target = I;
 
     fn deref(&self) -> &Self::Target {
@@ -94,10 +133,10 @@ mod tests {
 
     #[test]
     fn map_u16() {
-        let mut items = std::collections::HashMap::new();
+        let mut items = HashMap::new();
         items.insert("Audi".into(), Car(99, "Audi".into()));
         items.insert("BMW".into(), Car(1, "BMW".into()));
-        let m = LkupMap::<MultiPosIndex<u16, String>, _>::new(|c| c.0, items);
+        let m = LkupHashMap::<MultiPosIndex<u16, String>, _, _>::new(|c| c.0, items);
 
         assert!(m.contains_key("BMW"));
 
