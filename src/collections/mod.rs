@@ -4,7 +4,7 @@
 pub mod list;
 pub mod map;
 
-use crate::lookup::store::Lookup;
+use crate::lookup::store::{Lookup, Store};
 
 /// [`Itemer`] returns an Item which is stored at a given `Position` (Index)
 /// in a collection (Vec, Array, Map ...).
@@ -18,6 +18,18 @@ pub trait Itemer<Pos> {
     ///
     /// If no Item exist for the given Position.
     fn item(&self, pos: &Pos) -> &Self::Output;
+}
+
+/// Create a `Store` for a given collection.
+pub trait StoreCreator<S>
+where
+    S: Store,
+{
+    type Item;
+
+    fn create_store<F>(&self, field: &F) -> S
+    where
+        F: Fn(&Self::Item) -> S::Key;
 }
 
 /// A `Retriever` is the main interface for get Items by an given `Lookup`.

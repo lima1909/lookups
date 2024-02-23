@@ -1,41 +1,67 @@
 pub mod ro;
 
-use crate::collections::Itemer;
-use std::{borrow::Borrow, hash::Hash};
+use std::collections::{BTreeMap, HashMap};
 
 #[cfg(feature = "hashbrown")]
-impl<Q, K, T> Itemer<Q> for hashbrown::HashMap<K, T>
-where
-    K: Borrow<Q> + Hash + Eq,
-    Q: Hash + Eq,
-{
-    type Output = T;
+use hashbrown::HashMap as HHashMap;
 
-    fn item(&self, pos: &Q) -> &Self::Output {
-        &self[pos]
-    }
+macro_rules! itemer {
+    (
+        $( $itemer:ident ), + $(,)*
+    ) => {
+        $(
+
+            impl<Q, K, T> crate::collections::Itemer<Q> for $itemer<K, T>
+            where
+                K: std::borrow::Borrow<Q> + std::hash::Hash + Eq + Ord,
+                Q: std::hash::Hash + Eq + Ord,
+            {
+                type Output = T;
+
+                fn item(&self, pos: &Q) -> &Self::Output {
+                    &self[pos]
+                }
+            }
+        )+
+    };
 }
 
-impl<Q, K, T> Itemer<Q> for std::collections::HashMap<K, T>
-where
-    K: Borrow<Q> + Hash + Eq,
-    Q: Hash + Eq,
-{
-    type Output = T;
+itemer!(HashMap, BTreeMap);
 
-    fn item(&self, pos: &Q) -> &Self::Output {
-        &self[pos]
-    }
+#[cfg(feature = "hashbrown")]
+itemer!(HHashMap);
+
+macro_rules! create_store {
+    (
+        $( $itemer:ident ), + $(,)*
+    ) => {
+        $(
+
+            impl<S, K, T> crate::collections::StoreCreator<S> for $itemer<K, T>
+            where
+                S: crate::lookup::store::Store<Pos = K>,
+                K: Clone,
+            {
+                type Item = T;
+
+                fn create_store<F>(&self, field: &F) -> S
+                where
+                    F: Fn(&Self::Item) -> S::Key,
+                {
+                    let mut store = S::with_capacity(self.len());
+
+                    self.iter().map(|(k, v)| (field(v), k.clone()))
+                        .for_each(|(key, pos)| store.insert(key, pos));
+
+                    store
+                }
+            }
+
+        )+
+    };
 }
 
-impl<Q, K, T> Itemer<Q> for std::collections::BTreeMap<K, T>
-where
-    K: Borrow<Q> + Hash + Eq + Ord,
-    Q: Hash + Eq + Ord,
-{
-    type Output = T;
+create_store!(HashMap, BTreeMap);
 
-    fn item(&self, pos: &Q) -> &Self::Output {
-        &self[pos]
-    }
-}
+#[cfg(feature = "hashbrown")]
+create_store!(HHashMap);

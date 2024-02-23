@@ -1,7 +1,7 @@
 //! `Read only` implementations for lookup collections `List` like `Vec`
 //!
-use crate::collections::Retriever;
-use crate::lookup::store::{Store, ToStore, View, ViewCreator};
+use crate::collections::{Retriever, StoreCreator};
+use crate::lookup::store::{Store, View, ViewCreator};
 use std::ops::Deref;
 
 /// [`LVec`] is a read only lookup extenstion for a [`std::vec::Vec`].
@@ -46,19 +46,17 @@ pub struct LVec<S, I> {
     pub(crate) items: Vec<I>,
 }
 
-impl<S, I> LVec<S, I>
-where
-    S: Store<Pos = usize>,
-{
+impl<S, I> LVec<S, I> {
     pub fn new<F, V>(field: F, items: V) -> Self
     where
+        S: Store<Pos = usize>,
         F: Fn(&I) -> S::Key,
         V: Into<Vec<I>>,
     {
         let items = items.into();
 
         Self {
-            store: items.iter().enumerate().to_store(field),
+            store: items.create_store(&field),
             items,
         }
     }

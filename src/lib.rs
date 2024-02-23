@@ -22,16 +22,15 @@
 //!     name: String,
 //! }
 //!
-//! let cars = [
-//!     (String::from("BMW"),  Car{id: 0, name: "BMW".into()}),
-//!     (String::from("Audi"), Car{id: 5, name: "Audi".into()}),
-//!     (String::from("VW"),   Car{id: 2, name: "VW".into()}),
-//! ];
+//! let mut cars = std::collections::HashMap::new();
+//! cars.insert(String::from("BMW"),  Car{id: 0, name: "BMW".into()});
+//! cars.insert(String::from("Audi"), Car{id: 5, name: "Audi".into()});
+//! cars.insert(String::from("VW"),   Car{id: 2, name: "VW".into()});
 //!
 //! use lookups::{collections::map::ro::LHashMap, lookup::UniquePosIndex};
 //!
 //! // create a new Lookup HashMap: LHashMap with a UniquePosIndex
-//! let map = LHashMap::<UniquePosIndex<_, _>, _, _>::new(|c| c.id, cars);
+//! let map = LHashMap::<UniquePosIndex<_, _>, _>::new(|c| c.id, cars);
 //!
 //! // conventionally HashMap access with Key (name: String)
 //! assert!(map.contains_key("VW"));

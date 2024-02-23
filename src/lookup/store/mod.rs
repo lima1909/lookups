@@ -173,33 +173,6 @@ where
     }
 }
 
-// ---- internal trait to create a Store by a given Iterator --------------
-pub(crate) trait ToStore<'a, Item, Pos> {
-    fn to_store<S, F>(self, field: F) -> S
-    where
-        S: Store<Pos = Pos>,
-        F: Fn(&Item) -> S::Key;
-}
-
-impl<'a, It, I: 'a, Pos> ToStore<'a, I, Pos> for It
-where
-    It: Iterator<Item = (Pos, &'a I)> + ExactSizeIterator,
-{
-    fn to_store<S, F>(self, field: F) -> S
-    where
-        S: Store<Pos = Pos>,
-        F: Fn(&I) -> S::Key,
-    {
-        let mut store = S::with_capacity(self.len());
-
-        self.for_each(|(pos, item)| {
-            store.insert(field(item), pos);
-        });
-
-        store
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

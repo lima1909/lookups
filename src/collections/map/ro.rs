@@ -3,8 +3,8 @@
 
 use std::ops::Deref;
 
-use crate::collections::Retriever;
-use crate::lookup::store::{Store, ToStore, View, ViewCreator};
+use crate::collections::{Retriever, StoreCreator};
+use crate::lookup::store::{Store, View, ViewCreator};
 
 /// [`LHashMap`] is a read only `HashMap` which is extended by a given `Lookup` implementation.
 ///
@@ -17,15 +17,14 @@ use crate::lookup::store::{Store, ToStore, View, ViewCreator};
 ///     name: String,
 /// }
 ///
-/// let data = [
-///     (String::from("Paul")  , Person{id: 0, name: "Paul".into()}),
-///     (String::from("Mario") , Person{id: 5, name: "Mario".into()}),
-///     (String::from("Jasmin"), Person{id: 2, name: "Jasmin".into()}),
-///     ];
+/// let mut persons = std::collections::HashMap::new();
+/// persons.insert(String::from("Paul")  , Person{id: 0, name: "Paul".into()});
+/// persons.insert(String::from("Mario") , Person{id: 5, name: "Mario".into()});
+/// persons.insert(String::from("Jasmin"), Person{id: 2, name: "Jasmin".into()});
 ///
 /// use lookups::{collections::map::ro::LHashMap, lookup::UniquePosIndex};
 ///
-/// let map = LHashMap::<UniquePosIndex<_, _>, _, _>::new(|p| p.id, data);
+/// let map = LHashMap::<UniquePosIndex<_, _>, _>::new(|p| p.id, persons);
 ///
 /// assert!(map.contains_key("Paul"));     // conventionally HashMap access with String - Key
 /// assert!(map.lkup().contains_key(2)); // lookup with usize - Key
@@ -43,38 +42,29 @@ use crate::lookup::store::{Store, ToStore, View, ViewCreator};
 /// );
 /// ```
 ///
-
-pub struct LHashMap<S, K, V> {
+pub struct LHashMap<S, I> {
     store: S,
-    items: crate::HashMap<K, V>,
+    items: I,
 }
 
-impl<S, K, V> LHashMap<S, K, V>
-where
-    S: Store<Pos = K>,
-{
-    pub fn new<F, M>(field: F, items: M) -> Self
+impl<S, I> LHashMap<S, I> {
+    pub fn new<F>(field: F, items: I) -> Self
     where
-        F: Fn(&V) -> S::Key,
-        M: Into<crate::HashMap<K, V>>,
-        K: Clone,
+        S: Store,
+        I: StoreCreator<S>,
+        F: Fn(&I::Item) -> S::Key,
     {
-        let m = items.into();
-
         Self {
-            store: m.iter().map(|(k, v)| (k.clone(), v)).to_store(field),
-            items: m,
+            store: items.create_store(&field),
+            items,
         }
     }
 
-    pub fn lkup(&self) -> Retriever<&S, crate::HashMap<K, V>> {
+    pub fn lkup(&self) -> Retriever<&S, I> {
         Retriever::new(&self.store, &self.items)
     }
 
-    pub fn create_lkup_view<'a, It>(
-        &'a self,
-        keys: It,
-    ) -> Retriever<View<S::Lookup>, crate::HashMap<K, V>>
+    pub fn create_lkup_view<'a, It>(&'a self, keys: It) -> Retriever<View<S::Lookup>, I>
     where
         S: ViewCreator<'a>,
         It: IntoIterator<Item = <S as ViewCreator<'a>>::Key>,
@@ -84,8 +74,8 @@ where
     }
 }
 
-impl<S, K, V> Deref for LHashMap<S, K, V> {
-    type Target = crate::HashMap<K, V>;
+impl<S, I> Deref for LHashMap<S, I> {
+    type Target = I;
 
     fn deref(&self) -> &Self::Target {
         &self.items
@@ -106,7 +96,7 @@ mod tests {
             ("Audi".into(), Car(99, "Audi".into())),
             ("BMW".into(), Car(1, "BMW".into())),
         ]);
-        let m = LHashMap::<MultiPosIndex<u16, String>, _, _>::new(|c| c.0, items);
+        let m = LHashMap::<MultiPosIndex<u16, String>, _>::new(|c| c.0, items);
 
         assert!(m.contains_key("BMW"));
 
