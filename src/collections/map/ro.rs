@@ -1,12 +1,11 @@
-//! `Read only` implementations for lookup collections `Map` like `HashMap`
+//! `Read only` implementations for lookup collections `LkupMap` like `HashMap`, `BTreeMap`
 //!
 
+use crate::collections::{map::MapIndex, Retriever, StoreCreator};
+use crate::lookup::store::{Store, View, ViewCreator};
 use std::ops::Deref;
 
-use crate::collections::{Retriever, StoreCreator};
-use crate::lookup::store::{Store, View, ViewCreator};
-
-/// [`LHashMap`] is a read only `HashMap` which is extended by a given `Lookup` implementation.
+/// [`LkupMap`] is a read only `HashMap` which is extended by a given `Lookup` implementation.
 ///
 /// # Example
 ///
@@ -22,9 +21,9 @@ use crate::lookup::store::{Store, View, ViewCreator};
 /// persons.insert(String::from("Mario") , Person{id: 5, name: "Mario".into()});
 /// persons.insert(String::from("Jasmin"), Person{id: 2, name: "Jasmin".into()});
 ///
-/// use lookups::{collections::map::ro::LHashMap, lookup::UniquePosIndex};
+/// use lookups::{collections::map::ro::LkupMap, lookup::UniquePosIndex};
 ///
-/// let map = LHashMap::<UniquePosIndex<_, _>, _>::new(|p| p.id, persons);
+/// let map = LkupMap::<UniquePosIndex<_, _>, _>::new(|p| p.id, persons);
 ///
 /// assert!(map.contains_key("Paul"));     // conventionally HashMap access with String - Key
 /// assert!(map.lkup().contains_key(2)); // lookup with usize - Key
@@ -42,12 +41,12 @@ use crate::lookup::store::{Store, View, ViewCreator};
 /// );
 /// ```
 ///
-pub struct LHashMap<S, I> {
+pub struct LkupMap<S, I> {
     store: S,
     items: I,
 }
 
-impl<S, I> LHashMap<S, I> {
+impl<S, I> LkupMap<S, I> {
     pub fn new<F>(field: F, items: I) -> Self
     where
         S: Store,
@@ -60,21 +59,24 @@ impl<S, I> LHashMap<S, I> {
         }
     }
 
-    pub fn lkup(&self) -> Retriever<&S, I> {
-        Retriever::new(&self.store, &self.items)
+    pub fn lkup(&self) -> Retriever<&S, MapIndex<'_, I>> {
+        Retriever::new(&self.store, MapIndex(&self.items))
     }
 
-    pub fn create_lkup_view<'a, It>(&'a self, keys: It) -> Retriever<View<S::Lookup>, I>
+    pub fn create_lkup_view<'a, It>(
+        &'a self,
+        keys: It,
+    ) -> Retriever<View<S::Lookup>, MapIndex<'_, I>>
     where
         S: ViewCreator<'a>,
         It: IntoIterator<Item = <S as ViewCreator<'a>>::Key>,
     {
         let view = self.store.create_view(keys);
-        Retriever::new(view, &self.items)
+        Retriever::new(view, MapIndex(&self.items))
     }
 }
 
-impl<S, I> Deref for LHashMap<S, I> {
+impl<S, I> Deref for LkupMap<S, I> {
     type Target = I;
 
     fn deref(&self) -> &Self::Target {
@@ -92,11 +94,10 @@ mod tests {
 
     #[test]
     fn map_u16() {
-        let items = crate::HashMap::from([
-            ("Audi".into(), Car(99, "Audi".into())),
-            ("BMW".into(), Car(1, "BMW".into())),
-        ]);
-        let m = LHashMap::<MultiPosIndex<u16, String>, _>::new(|c| c.0, items);
+        let mut items = std::collections::HashMap::new();
+        items.insert("Audi".into(), Car(99, "Audi".into()));
+        items.insert("BMW".into(), Car(1, "BMW".into()));
+        let m = LkupMap::<MultiPosIndex<u16, String>, _>::new(|c| c.0, items);
 
         assert!(m.contains_key("BMW"));
 

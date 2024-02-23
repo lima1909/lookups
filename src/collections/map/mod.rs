@@ -1,35 +1,30 @@
-pub mod ro;
+//! `Map`s are collections like like `HashMap`, `BTreeMap`, ...
+//!
 
-use std::collections::{BTreeMap, HashMap};
+pub mod ro;
 
 #[cfg(feature = "hashbrown")]
 use hashbrown::HashMap as HHashMap;
 
-macro_rules! itemer {
-    (
-        $( $itemer:ident ), + $(,)*
-    ) => {
-        $(
+use std::{
+    collections::{BTreeMap, HashMap},
+    hash::Hash,
+    ops::Index,
+};
 
-            impl<Q, K, T> crate::collections::Itemer<Q> for $itemer<K, T>
-            where
-                K: std::borrow::Borrow<Q> + std::hash::Hash + Eq + Ord,
-                Q: std::hash::Hash + Eq + Ord,
-            {
-                type Output = T;
+pub struct MapIndex<'a, I>(&'a I);
 
-                fn item(&self, pos: &Q) -> &Self::Output {
-                    &self[pos]
-                }
-            }
-        )+
-    };
+impl<'a, I, Q> Index<&'a Q> for MapIndex<'a, I>
+where
+    I: Index<&'a Q>,
+    Q: Eq + Hash + Ord + ?Sized,
+{
+    type Output = I::Output;
+
+    fn index(&self, index: &'a Q) -> &Self::Output {
+        self.0.index(index)
+    }
 }
-
-itemer!(HashMap, BTreeMap);
-
-#[cfg(feature = "hashbrown")]
-itemer!(HHashMap);
 
 macro_rules! create_store {
     (

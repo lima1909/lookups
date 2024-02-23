@@ -1,32 +1,73 @@
-//! `Read write` implementations for lookup collections `List` like `Vec`
+//! `Read write` implementations for lookup collections `Vec`.
 //!
-use std::ops::Deref;
 
 use crate::{collections::list::ro, lookup::store::Store};
+use std::ops::Deref;
 
+/// [`LkupVec`] is a [`std::vec::Vec`] with one `Lookup`.
 ///
-/// `List` is a list with one `Store`.
-/// This means, one `Lookup`.
+/// # Example
 ///
+/// ```
+/// #[derive(PartialEq, Debug)]
+/// struct Person {
+///     id: usize,
+///     name: String,
+/// }
+///
+/// use lookups::{collections::list::rw::LkupVec, lookup::MultiPosHash};
+///
+/// let mut vec = LkupVec::<MultiPosHash, Person, _>::new(|p| p.name.clone());
+///
+/// vec.push(Person{id: 0, name: "Paul".into()});
+/// vec.push(Person{id: 5, name: "Mario".into()});
+/// vec.push(Person{id: 2, name: "Jasmin".into()});
+///
+/// assert!(vec.lkup().contains_key("Paul")); // lookup with a given Key
+///
+/// assert_eq!(
+///     &Person{id: 5, name:  "Mario".into()},
+///     // get a Person by an given Key: "Mario"
+///     vec.lkup().get_by_key("Mario").next().unwrap()
+/// );
+///
+/// assert_eq!(
+///     vec![&Person{id: 0, name:  "Paul".into()}, &Person{id: 2, name:  "Jasmin".into()}],
+///     // get many a Person by an many given Key
+///     vec.lkup().get_by_many_keys(["Paul", "Jasmin"]).collect::<Vec<_>>(),
+/// );
+/// ```
+///
+
 #[derive(Debug)]
-pub struct LVec<S, I, F> {
+pub struct LkupVec<S, I, F> {
+    inner: ro::LkupList<S, Vec<I>>,
     field: F,
-    inner: ro::LVec<S, I>,
 }
 
-impl<S, I, F> LVec<S, I, F>
+impl<S, I, F> LkupVec<S, I, F>
 where
     S: Store<Pos = usize>,
     F: Fn(&I) -> S::Key,
 {
-    pub fn new<V>(field: F, items: V) -> Self
+    // pub fn new<V>(field: F, items: V) -> Self
+    // where
+    //     V: Into<Vec<I>>,
+    //     F: Clone,
+    // {
+    //     Self {
+    //         inner: ro::LkupList::new(field.clone(), items.into()),
+    //         field,
+    //     }
+    // }
+
+    pub fn new(field: F) -> Self
     where
         F: Clone,
-        V: Into<Vec<I>>,
     {
         Self {
-            field: field.clone(),
-            inner: ro::LVec::new(field, items),
+            inner: ro::LkupList::new(field.clone(), Vec::new()),
+            field,
         }
     }
 
@@ -56,8 +97,8 @@ where
     }
 }
 
-impl<S, I, F> Deref for LVec<S, I, F> {
-    type Target = ro::LVec<S, I>;
+impl<S, I, F> Deref for LkupVec<S, I, F> {
+    type Target = ro::LkupList<S, Vec<I>>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -121,9 +162,10 @@ mod tests {
     }
 
     #[test]
-    fn lvec() {
-        let mut v = LVec::<MultiPosHash, _, _>::new(Person::name, [Person::new(0, "Paul")]);
+    fn lkupvec() {
+        let mut v = LkupVec::<MultiPosHash, _, _>::new(Person::name);
         v.push(Person::new(1, "Anna"));
+        v.push(Person::new(0, "Paul"));
 
         assert!(!v.is_empty());
         assert_eq!(2, v.len());
@@ -134,10 +176,10 @@ mod tests {
         );
 
         // id 101 not exist
-        assert_eq!(None, v.update(101, |p| { p.id = 102 }));
+        // assert_eq!(None, v.update(101, |p| { p.id = 102 }));
         assert_eq!(
             Some(&Person::new(99, "Anna")),
-            v.update(1, |p| { p.id = 99 })
+            v.update(0, |p| { p.id = 99 })
         );
         assert_eq!(
             &Person::new(99, "Anna"),

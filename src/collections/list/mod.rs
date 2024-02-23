@@ -1,16 +1,22 @@
+//! `List`s are collections like `Vec`, `Slice`, ...
+//!
+
 pub mod ro;
 pub mod rw;
 
-use crate::{
-    collections::{Itemer, StoreCreator},
-    lookup::store::Store,
-};
+use crate::{collections::StoreCreator, lookup::store::Store};
+use std::ops::Index;
 
-impl<T> Itemer<usize> for Vec<T> {
-    type Output = T;
+pub struct ListIndex<'a, I>(&'a I);
 
-    fn item(&self, pos: &usize) -> &Self::Output {
-        &self[*pos]
+impl<I> Index<&usize> for ListIndex<'_, I>
+where
+    I: Index<usize>,
+{
+    type Output = I::Output;
+
+    fn index(&self, index: &usize) -> &Self::Output {
+        self.0.index(*index)
     }
 }
 
@@ -28,14 +34,6 @@ where
     }
 }
 
-impl<T, const N: usize> Itemer<usize> for [T; N] {
-    type Output = T;
-
-    fn item(&self, pos: &usize) -> &Self::Output {
-        &self[*pos]
-    }
-}
-
 impl<S, T, const N: usize> StoreCreator<S> for [T; N]
 where
     S: Store<Pos = usize>,
@@ -47,14 +45,6 @@ where
         F: Fn(&Self::Item) -> S::Key,
     {
         self.iter().create_store(field)
-    }
-}
-
-impl<T> Itemer<usize> for &[T] {
-    type Output = T;
-
-    fn item(&self, pos: &usize) -> &Self::Output {
-        &self[*pos]
     }
 }
 
