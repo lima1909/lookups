@@ -6,8 +6,6 @@ pub mod rw;
 
 use std::ops::Index;
 
-pub use rw::LkupVec;
-
 pub struct ListIndex<'a, I>(&'a I);
 
 impl<I> Index<&usize> for ListIndex<'_, I>

@@ -7,6 +7,9 @@ pub mod map;
 use crate::lookup::store::Lookup;
 use std::ops::Index;
 
+pub use crate::collections::list::rw::LkupVec;
+pub use crate::collections::map::rw::LkupHashMap;
+
 /// A `Retriever` is the main interface for get Items by an given `Lookup`.
 pub struct Retriever<L, I> {
     lookup: L,

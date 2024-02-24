@@ -22,16 +22,13 @@
 //!     name: String,
 //! }
 //!
-//! let cars = [
-//!     (String::from("BMW"),  Car{id: 0, name: "BMW".into()}),
-//!     (String::from("Audi"), Car{id: 5, name: "Audi".into()}),
-//!     (String::from("VW"),   Car{id: 2, name: "VW".into()}),
-//! ];
-//!
-//! use lookups::{collections::map::ro::LkupHashMap, lookup::UniquePosIndex};
+//! use lookups::{collections::LkupHashMap, lookup::UniquePosIndex};
 //!
 //! // create a new Lookup HashMap: LkupMap with a UniquePosIndex
-//! let map = LkupHashMap::<UniquePosIndex<usize, String>, _, _>::from_iter(|c| c.id, cars);
+//! let mut map = LkupHashMap::<UniquePosIndex<usize, String>, _, _, _>::new(|c: &Car| c.id);
+//! map.insert(String::from("BMW"),  Car{id: 0, name: "BMW".into()});
+//! map.insert(String::from("Audi"), Car{id: 5, name: "Audi".into()});
+//! map.insert(String::from("VW"),   Car{id: 2, name: "VW".into()});
 //!
 //! // conventionally HashMap access with Key (name: String)
 //! assert!(map.contains_key("VW"));

@@ -2,6 +2,7 @@
 //!
 
 pub mod ro;
+pub mod rw;
 
 use std::{hash::Hash, ops::Index};
 

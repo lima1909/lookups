@@ -15,7 +15,7 @@ use std::ops::Deref;
 ///     name: String,
 /// }
 ///
-/// use lookups::{collections::list::LkupVec, lookup::MultiPosHash};
+/// use lookups::{collections::LkupVec, lookup::MultiPosHash};
 ///
 /// let mut vec = LkupVec::<MultiPosHash, Person, _>::new(|p| p.name.clone());
 ///

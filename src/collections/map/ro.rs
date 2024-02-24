@@ -51,7 +51,7 @@ type HashMap<K, V> = std::collections::HashMap<K, V>;
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct LkupHashMap<S, K, V>(LkupBaseMap<S, HashMap<K, V>>);
+pub struct LkupHashMap<S, K, V>(pub(crate) LkupBaseMap<S, HashMap<K, V>>);
 
 impl<S, K, V> LkupHashMap<S, K, V>
 where
@@ -90,8 +90,8 @@ impl<S, K, V> Deref for LkupHashMap<S, K, V> {
 
 #[derive(Debug)]
 pub struct LkupBaseMap<S, I> {
-    store: S,
-    items: I,
+    pub(crate) store: S,
+    pub(crate) items: I,
 }
 
 impl<S, I> LkupBaseMap<S, I>

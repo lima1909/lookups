@@ -36,15 +36,13 @@ struct Car {
     name: String,
 }
 
-let mut cars = std::collections::HashMap::new();
-cars.insert(String::from("BMW"),  Car{id: 0, name: "BMW".into()});
-cars.insert(String::from("Audi"), Car{id: 5, name: "Audi".into()});
-cars.insert(String::from("VW"),   Car{id: 2, name: "VW".into()});
-
-use lookups::{collections::map::ro::LkupMap, lookup::UniquePosIndex};
+use lookups::{collections::LkupHashMap, lookup::UniquePosIndex};
 
 // create a new Lookup HashMap: LkupMap with a UniquePosIndex
-let map = LkupMap::<UniquePosIndex<_, _>, _>::new(|c| c.id, cars);
+let mut map = LkupHashMap::<UniquePosIndex<usize, String>, _, _, _>::new(|c: &Car| c.id);
+map.insert(String::from("BMW"),  Car{id: 0, name: "BMW".into()});
+map.insert(String::from("Audi"), Car{id: 5, name: "Audi".into()});
+map.insert(String::from("VW"),   Car{id: 2, name: "VW".into()});
 
 // conventionally HashMap access with Key (name: String)
 assert!(map.contains_key("VW"));
