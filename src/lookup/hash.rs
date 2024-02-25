@@ -4,8 +4,8 @@
 //! - all advantages, which has a hashing procedure
 //!
 use crate::lookup::store::{
-    KeyPosition, KeyPositionAsSlice, Lookup, MultiKeyPositon, Store, UniqueKeyPositon, View,
-    ViewCreator,
+    position::{KeyPosition, KeyPositionAsSlice, MultiKeyPositon, UniqueKeyPositon},
+    Lookup, Store, View, ViewCreator,
 };
 use std::{borrow::Borrow, hash::Hash, ops::Deref};
 

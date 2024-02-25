@@ -15,8 +15,8 @@
 //! - the finding of an `Key` is very fast (you can __directly__ jump to the `Key`)
 //!
 use crate::lookup::store::{
-    KeyPosition, KeyPositionAsSlice, Lookup, MultiKeyPositon, Store, UniqueKeyPositon, View,
-    ViewCreator,
+    position::{KeyPosition, KeyPositionAsSlice, MultiKeyPositon, UniqueKeyPositon},
+    Lookup, Store, View, ViewCreator,
 };
 use std::ops::Deref;
 

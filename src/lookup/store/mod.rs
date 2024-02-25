@@ -2,8 +2,6 @@
 //!
 pub mod position;
 
-pub use position::{KeyPosition, KeyPositionAsSlice, MultiKeyPositon, UniqueKeyPositon};
-
 /// Store is an container which the mapping between the `Key`s and they `Position`s stored.
 ///
 pub trait Store {
@@ -176,7 +174,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lookup::store::{KeyPosition, MultiKeyPositon, UniqueKeyPositon};
+    use crate::lookup::store::position::{
+        KeyPosition, KeyPositionAsSlice, MultiKeyPositon, UniqueKeyPositon,
+    };
     use rstest::rstest;
     use std::{borrow::Borrow, collections::HashMap, hash::Hash};
 
