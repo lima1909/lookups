@@ -15,7 +15,7 @@ use std::ops::Deref;
 ///     name: String,
 /// }
 ///
-/// use lookups::{collections::LkupVec, lookup::MultiPosHash};
+/// use lookups::{collections::LkupVec, lookup::hash::MultiPosHash};
 ///
 /// let mut vec = LkupVec::<MultiPosHash, Person, _>::new(|p| p.name.clone());
 ///
@@ -140,7 +140,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lookup::MultiPosHash;
+    use crate::lookup::hash::MultiPosHash;
 
     #[derive(PartialEq, Debug, Clone)]
     struct Person {

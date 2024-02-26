@@ -27,7 +27,7 @@ impl<L, I> Retriever<L, I> {
     /// # Example
     ///
     /// ```
-    /// use lookups::lookup::MultiPosIndex;
+    /// use lookups::lookup::index::MultiPosIndex;
     /// use lookups::collections::list::ro::LkupList;
     ///
     /// #[derive(Debug, PartialEq)]
@@ -52,7 +52,7 @@ impl<L, I> Retriever<L, I> {
     /// # Example
     ///
     /// ```
-    /// use lookups::lookup::MultiPosIndex;
+    /// use lookups::lookup::index::MultiPosIndex;
     /// use lookups::collections::list::ro::LkupList;
     ///
     /// #[derive(Debug, PartialEq)]
@@ -87,7 +87,7 @@ impl<L, I> Retriever<L, I> {
     /// # Example:
     ///
     /// ```
-    /// use lookups::lookup::MultiPosIndex;
+    /// use lookups::lookup::index::MultiPosIndex;
     /// use lookups::collections::list::ro::LkupList;
     ///
     /// #[derive(Debug, PartialEq)]

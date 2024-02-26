@@ -81,7 +81,7 @@ impl<S, K, V, F> Deref for LkupHashMap<S, K, V, F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lookup::{MultiPosIndex, UniquePosHash};
+    use crate::lookup::{hash::UniquePosHash, index::MultiPosIndex};
 
     #[derive(Debug, PartialEq)]
     struct Car(usize, String);

@@ -30,13 +30,13 @@ The fast access can be achieved by using different methods, like;
 ### How can I use it?
 
 ```rust
+use lookups::{collections::LkupHashMap, lookup::index::UniquePosIndex};
+
 #[derive(PartialEq, Debug)]
 struct Car {
     id: usize,
     name: String,
 }
-
-use lookups::{collections::LkupHashMap, lookup::UniquePosIndex};
 
 // create a new Lookup HashMap: LkupMap with a UniquePosIndex
 let mut map = LkupHashMap::<UniquePosIndex<usize, String>, _, _, _>::new(|c: &Car| c.id);

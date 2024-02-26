@@ -1,18 +1,18 @@
-//! The module contains lookups which are using the _index_ position (the `Key`) in a `Vec` find all `Position`s.
+//! The module contains a lookup which are using the _index_ position (the `Key`) in a `Vec` find all `Position`s.
 //!
 //! This lookup is well suited for __consecutive numbers__,
 //! which starts by `0` or `1`, and do __not__ have any great __gaps__ in beetween.
 //! The `Key` musst implement the trait: `Into<usize>`.
 //!
-//! Gaps are a disadvantage by:
-//! - inserting new `Key`s (the Vec mus grow strongly: [`IndexLookup::insert`])
-//! - and by getting all `Key`s with [`IndexLookupExt::keys`]
+//! Gaps are a disadvantage by by getting all `Key`s with [`IndexLookupExt::keys`]
+//!
+//! ### A well suited use case:
 //!
 //! One use case for this conditions are __primary keys__ (e.g. artificially created).
 //!
-//! ## Advantages:
+//! ### Advantage:
 //!
-//! - the finding of an `Key` is very fast (you can __directly__ jump to the `Key`)
+//! The finding of an `Key` is very fast (you can __directly__ jump to the `Key`)
 //!
 use crate::lookup::store::{
     position::{KeyPosition, KeyPositionAsSlice, MultiKeyPositon, UniqueKeyPositon},

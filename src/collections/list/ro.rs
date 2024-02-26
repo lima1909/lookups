@@ -19,7 +19,7 @@ use std::ops::{Deref, Index};
 ///             Person{id: 5, name: "Mario".into()},
 ///             Person{id: 2, name: "Jasmin".into()}];
 ///
-/// use lookups::{collections::list::ro::LkupList, lookup::UniquePosHash};
+/// use lookups::{collections::list::ro::LkupList, lookup::hash::UniquePosHash};
 ///
 /// let vec = LkupList::<UniquePosHash, _>::new(|p| p.name.clone(), data);
 ///
@@ -92,7 +92,7 @@ impl<S, I: Index<usize>> Deref for LkupList<S, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lookup::{UniquePosHash, UniquePosIndex};
+    use crate::lookup::{hash::UniquePosHash, index::UniquePosIndex};
 
     #[derive(Debug, PartialEq)]
     struct Car(u16, String);

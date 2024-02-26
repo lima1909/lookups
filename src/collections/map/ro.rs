@@ -22,7 +22,7 @@ use std::{hash::Hash, ops::Deref};
 ///     (String::from("Jasmin"), Person{id: 2, name: "Jasmin".into()})
 /// ];
 ///
-/// use lookups::{collections::map::ro::LkupHashMap, lookup::UniquePosIndex};
+/// use lookups::{collections::map::ro::LkupHashMap, lookup::index::UniquePosIndex};
 ///
 /// let map = LkupHashMap::<UniquePosIndex<_, _>, _, _>::from_iter(|p| p.id, persons);
 ///
@@ -126,7 +126,7 @@ impl<S, I> Deref for LkupBaseMap<S, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lookup::MultiPosIndex;
+    use crate::lookup::index::MultiPosIndex;
 
     #[derive(Debug, PartialEq)]
     struct Car(u16, String);
