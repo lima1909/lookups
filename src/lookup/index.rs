@@ -42,7 +42,7 @@ where
     }
     fn pos_by_key(&self, key: K) -> &[Self::Pos] {
         match self.0.get(key.into()) {
-            Some(Some((_, p))) => p.as_slice(),
+            Some(Some((_, p))) => p.as_position_slice(),
             _ => &[],
         }
     }

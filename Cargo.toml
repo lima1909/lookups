@@ -10,6 +10,7 @@ repository = "https://github.com/lima1909/lookups"
 keywords = ["filter", "query", "index", "search", "collection"]
 categories = ["data-structures", "caching"]
 exclude = [".github", ".git", "Cargo.lock"]
+rust-version = "1.75"
 
 
 [dependencies]

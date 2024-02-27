@@ -224,7 +224,7 @@ mod tests {
 
         fn pos_by_key(&self, key: &Q) -> &[Self::Pos] {
             match self.idx.get(key) {
-                Some(i) => i.as_slice(),
+                Some(i) => i.as_position_slice(),
                 None => &[],
             }
         }

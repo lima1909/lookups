@@ -24,7 +24,7 @@ pub trait KeyPositionAsSlice {
     type Pos;
 
     /// Returns all saved `position` as slice.
-    fn as_slice(&self) -> &[Self::Pos];
+    fn as_position_slice(&self) -> &[Self::Pos];
 }
 
 impl<K> KeyPositionAsSlice for &K
@@ -33,8 +33,8 @@ where
 {
     type Pos = K::Pos;
 
-    fn as_slice(&self) -> &[Self::Pos] {
-        (*self).as_slice()
+    fn as_position_slice(&self) -> &[Self::Pos] {
+        (*self).as_position_slice()
     }
 }
 
@@ -80,7 +80,7 @@ where
 impl<P> KeyPositionAsSlice for UniqueKeyPositon<P> {
     type Pos = P;
 
-    fn as_slice(&self) -> &[Self::Pos] {
+    fn as_position_slice(&self) -> &[Self::Pos] {
         self.as_slice()
     }
 }
@@ -118,7 +118,7 @@ where
 impl<P> KeyPositionAsSlice for MultiKeyPositon<P> {
     type Pos = P;
 
-    fn as_slice(&self) -> &[Self::Pos] {
+    fn as_position_slice(&self) -> &[Self::Pos] {
         self.as_slice()
     }
 }
@@ -132,7 +132,7 @@ mod tests {
         #[test]
         fn unique_new() {
             assert_eq!(UniqueKeyPositon::from_pos(7), Some(7));
-            assert_eq!(UniqueKeyPositon::from_pos(7).as_slice(), &[7]);
+            assert_eq!(UniqueKeyPositon::from_pos(7).as_position_slice(), &[7]);
         }
 
         #[test]
@@ -145,10 +145,10 @@ mod tests {
         fn as_position() {
             let mut x = UniqueKeyPositon::from_pos(1);
 
-            assert_eq!(x.as_slice(), &[1; 1]);
+            assert_eq!(x.as_position_slice(), &[1; 1]);
 
             assert!(x.remove_pos(&1));
-            assert_eq!(x.as_slice(), &[]);
+            assert_eq!(x.as_position_slice(), &[]);
         }
 
         #[test]
