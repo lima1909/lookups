@@ -53,20 +53,14 @@ type HashMap<K, V> = std::collections::HashMap<K, V>;
 #[repr(transparent)]
 pub struct LkupHashMap<S, K, V>(pub(crate) LkupBaseMap<S, HashMap<K, V>>);
 
-impl<S, K, V> LkupHashMap<S, K, V>
-where
-    S: Store<Pos = K>,
-{
+impl<S, K, V> LkupHashMap<S, K, V> {
     pub fn new<F>(field: F, map: HashMap<K, V>) -> Self
     where
         F: Fn(&V) -> S::Key,
+        S: Store<Pos = K>,
         K: Clone,
     {
-        let mut store = S::with_capacity(map.len());
-        map.iter()
-            .map(|(k, v)| (field(v), k.clone()))
-            .for_each(|(key, pos)| store.insert(key, pos));
-
+        let store = S::from_map(&field, map.iter());
         Self(LkupBaseMap { store, items: map })
     }
 
@@ -74,6 +68,7 @@ where
     where
         I: IntoIterator<Item = (K, V)>,
         F: Fn(&V) -> S::Key,
+        S: Store<Pos = K>,
         K: Hash + Eq + Clone,
     {
         Self::new(field, HashMap::from_iter(iter))

@@ -44,23 +44,15 @@ pub struct LkupList<S, I> {
     pub(crate) items: I,
 }
 
-impl<S, I> LkupList<S, I>
-where
-    S: Store<Pos = usize>,
-    I: Index<usize>,
-{
+impl<S, I> LkupList<S, I> {
     pub fn new<F, T>(field: F, items: I) -> Self
     where
         I: AsRef<[T]>,
         F: Fn(&T) -> S::Key,
+        S: Store<Pos = usize>,
     {
         let items_ref = items.as_ref();
-        let mut store = S::with_capacity(items_ref.len());
-        items_ref
-            .iter()
-            .enumerate()
-            .for_each(|(pos, item)| store.insert(field(item), pos));
-
+        let store = S::from_list(&field, items_ref.iter());
         Self { store, items }
     }
 

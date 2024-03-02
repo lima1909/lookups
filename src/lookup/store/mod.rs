@@ -27,6 +27,33 @@ pub trait Store {
     /// To reduce memory allocations can create an `Store` with capacity.
     ///
     fn with_capacity(capacity: usize) -> Self;
+
+    /// Create a new `Store` from a given `List` (array, slice, Vec, ...) with a given `Key`.
+    /// The `Index-Type` is `usize`.
+    fn from_list<'a, I: 'a, F, It>(field: &F, it: It) -> Self
+    where
+        It: Iterator<Item = &'a I> + ExactSizeIterator,
+        F: Fn(&I) -> Self::Key,
+        Self: Store<Pos = usize> + Sized,
+    {
+        let mut store = Self::with_capacity(it.len());
+        it.enumerate()
+            .for_each(|(pos, item)| store.insert(field(item), pos));
+        store
+    }
+
+    /// Create a new `Store` from a given `Map` (`Key-Index-Pair`).
+    fn from_map<'a, I: 'a, F, It>(field: &F, it: It) -> Self
+    where
+        It: Iterator<Item = (&'a Self::Pos, &'a I)> + ExactSizeIterator,
+        F: Fn(&I) -> Self::Key,
+        Self: Sized,
+        Self::Pos: Clone + 'a,
+    {
+        let mut store = Self::with_capacity(it.len());
+        it.for_each(|(pos, item)| store.insert(field(item), pos.clone()));
+        store
+    }
 }
 
 /// Lookup for `Key`s. This a base Trait for more retrieval implementations.
