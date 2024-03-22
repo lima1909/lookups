@@ -4,7 +4,7 @@
 //! which starts by `0` or `1`, and do __not__ have any great __gaps__ in beetween.
 //! The `Key` musst implement the trait: `Into<usize>`.
 //!
-//! Gaps are a disadvantage by by getting all `Key`s with [`IndexLookupExt::keys`]
+//! Gaps are a disadvantage by by getting all `Key`s with [`IndexStoreExt::keys`]
 //!
 //! ### A well suited use case:
 //!
@@ -15,22 +15,17 @@
 //! The finding of an `Key` is very fast (you can __directly__ jump to the `Key`)
 //!
 use crate::lookup::store::{
-    position::{KeyPosition, KeyPositionAsSlice, MultiKeyPositon, UniqueKeyPositon},
-    Lookup, Store, View, ViewCreator,
+    position::{KeyPosition, KeyPositionAsSlice},
+    Lookup, Retriever, Store, View, ViewCreator,
 };
-use std::ops::Deref;
-
-/// Implementation for a `Index` with unique `Position`.
-pub type UniquePosIndex<K = usize, X = usize> = IndexLookup<K, UniqueKeyPositon<X>>;
-/// Implementation for a `Index` with multi `Position`s.
-pub type MultiPosIndex<K = usize, X = usize> = IndexLookup<K, MultiKeyPositon<X>>;
+use std::{marker::PhantomData, ops::Deref};
 
 /// `Key` is from type [`usize`] and the information are saved in a List (Store).
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct IndexLookup<K, P>(Vec<Option<(K, P)>>);
+pub struct IndexStore<K, P>(Vec<Option<(K, P)>>);
 
-impl<K, P> Lookup<K> for IndexLookup<K, P>
+impl<K, P> Retriever<K> for IndexStore<K, P>
 where
     K: Into<usize>,
     P: KeyPositionAsSlice,
@@ -48,13 +43,13 @@ where
     }
 }
 
-impl<'a, K, P> ViewCreator<'a> for IndexLookup<K, P>
+impl<'a, K, P> ViewCreator<'a> for IndexStore<K, P>
 where
     K: Into<usize> + Clone,
     P: KeyPositionAsSlice + 'a,
 {
     type Key = K;
-    type Lookup = IndexLookup<K, &'a P>;
+    type Lookup = IndexStore<K, &'a P>;
 
     fn create_view<It>(&'a self, keys: It) -> View<Self::Lookup>
     where
@@ -70,11 +65,11 @@ where
             }
         }
 
-        View::new(IndexLookup(lkup))
+        View::new(IndexStore(lkup))
     }
 }
 
-impl<K, P> Store for IndexLookup<K, P>
+impl<K, P> Store for IndexStore<K, P>
 where
     K: Into<usize> + Clone,
     P: KeyPosition + Clone,
@@ -115,22 +110,34 @@ where
     }
 }
 
-/// A proxy for exposing [`IndexLookup`] specific extensions.
-#[repr(transparent)]
-pub struct IndexLookupExt<K, P>(IndexLookup<K, P>);
+pub struct IndexLookup<K, P>(PhantomData<K>, PhantomData<P>);
 
-impl<K, P> Deref for IndexLookup<K, P> {
-    type Target = IndexLookupExt<K, P>;
+impl<K, P> Lookup<IndexStore<K, P>, P> for IndexLookup<K, P>
+where
+    K: Into<usize> + Clone,
+    P: KeyPosition + Clone,
+{
+    fn new() -> Self {
+        Self(PhantomData, PhantomData)
+    }
+}
+
+/// A proxy for exposing [`IndexStore`] specific extensions.
+#[repr(transparent)]
+pub struct IndexStoreExt<K, P>(IndexStore<K, P>);
+
+impl<K, P> Deref for IndexStore<K, P> {
+    type Target = IndexStoreExt<K, P>;
 
     fn deref(&self) -> &Self::Target {
         // SAFTY:
         // self is a valid pointer and
-        // IndexLookupExt is repr(transparent) thus has the same memory layout like IndexLookup
-        unsafe { &*(self as *const IndexLookup<K, P> as *const IndexLookupExt<K, P>) }
+        // IndexStoreExt is repr(transparent) thus has the same memory layout like IndexStore
+        unsafe { &*(self as *const IndexStore<K, P> as *const IndexStoreExt<K, P>) }
     }
 }
 
-impl<K, P> IndexLookupExt<K, P>
+impl<K, P> IndexStoreExt<K, P>
 where
     K: Clone,
 {
@@ -166,6 +173,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::lookup::store::position::{MultiKeyPosition, UniqueKeyPosition};
+
+    type UniqueKeyIndex<K = usize, X = usize> = IndexStore<K, UniqueKeyPosition<X>>;
+    type MultiKeyIndex<K = usize, X = usize> = IndexStore<K, MultiKeyPosition<X>>;
 
     #[test]
     fn gender() {
@@ -188,7 +199,7 @@ mod tests {
 
         use Gender::*;
 
-        let mut idx = MultiPosIndex::with_capacity(10);
+        let mut idx = MultiKeyIndex::with_capacity(10);
 
         idx.insert(Female, 10);
         idx.insert(Female, 2);
@@ -205,7 +216,7 @@ mod tests {
 
     #[test]
     fn create_view() {
-        let mut idx = MultiPosIndex::<u8, _>::with_capacity(0);
+        let mut idx = MultiKeyIndex::<u8, _>::with_capacity(0);
         idx.insert(0, String::from("a"));
         idx.insert(1, String::from("b"));
         idx.insert(2, String::from("c"));
@@ -237,7 +248,7 @@ mod tests {
 
         #[test]
         fn by_insert() {
-            let mut idx = MultiPosIndex::<usize>::with_capacity(0);
+            let mut idx = MultiKeyIndex::<usize>::with_capacity(0);
 
             // both not set
             assert_eq!(None, idx.min_key());
@@ -276,7 +287,7 @@ mod tests {
 
         #[test]
         fn by_insertwith_capacity() {
-            let mut idx = MultiPosIndex::<usize>::with_capacity(5);
+            let mut idx = MultiKeyIndex::<usize>::with_capacity(5);
             // both not set
             assert_eq!(None, idx.min_key());
             assert_eq!(None, idx.max_key());
@@ -309,7 +320,7 @@ mod tests {
 
         #[test]
         fn by_delete() {
-            let mut idx = MultiPosIndex::<usize>::with_capacity(5);
+            let mut idx = MultiKeyIndex::<usize>::with_capacity(5);
 
             // min/max not set
             assert_eq!(None, idx.min_key());
@@ -367,7 +378,7 @@ mod tests {
 
     #[test]
     fn store_and_lookup() {
-        let mut idx = UniquePosIndex::with_capacity(5);
+        let mut idx = UniqueKeyIndex::with_capacity(5);
         idx.insert(0usize, 0);
         idx.insert(1, 1);
         idx.insert(2, 2);
@@ -395,7 +406,7 @@ mod tests {
             name: String,
         }
 
-        let mut idx = UniquePosIndex::<usize, Complex>::with_capacity(5);
+        let mut idx = UniqueKeyIndex::<usize, Complex>::with_capacity(5);
         idx.insert(
             0,
             Complex {

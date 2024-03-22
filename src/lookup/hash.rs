@@ -4,10 +4,10 @@
 //! - all advantages, which has a hashing procedure
 //!
 use crate::lookup::store::{
-    position::{KeyPosition, KeyPositionAsSlice, MultiKeyPositon, UniqueKeyPositon},
-    Lookup, Store, View, ViewCreator,
+    position::{KeyPosition, KeyPositionAsSlice},
+    Lookup, Retriever, Store, View, ViewCreator,
 };
-use std::{borrow::Borrow, hash::Hash, ops::Deref};
+use std::{borrow::Borrow, hash::Hash, marker::PhantomData, ops::Deref};
 
 #[cfg(feature = "hashbrown")]
 type HashMap<K, V> = hashbrown::HashMap<K, V>;
@@ -15,18 +15,13 @@ type HashMap<K, V> = hashbrown::HashMap<K, V>;
 #[cfg(not(feature = "hashbrown"))]
 type HashMap<K, V> = std::collections::HashMap<K, V>;
 
-/// Implementation for a `HashLookup` with unique `Position`.
-pub type UniquePosHash<K = String, X = usize> = HashLookup<K, UniqueKeyPositon<X>>;
-/// Implementation for a `HashLookup` with multi `Position`s.
-pub type MultiPosHash<K = String, X = usize> = HashLookup<K, MultiKeyPositon<X>>;
-
-/// `HashLookup` is an implementation for an hash index.
+/// `HashStore` is an implementation for an hash index.
 ///
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct HashLookup<K, P>(HashMap<K, P>);
+pub struct HashStore<K, P>(HashMap<K, P>);
 
-impl<Q, K, P> Lookup<&Q> for HashLookup<K, P>
+impl<Q, K, P> Retriever<&Q> for HashStore<K, P>
 where
     K: Borrow<Q> + Hash + Eq,
     Q: Hash + Eq + ?Sized,
@@ -46,13 +41,13 @@ where
     }
 }
 
-impl<'a, K, P> ViewCreator<'a> for HashLookup<K, P>
+impl<'a, K, P> ViewCreator<'a> for HashStore<K, P>
 where
     K: Hash + Eq + Clone,
     P: KeyPositionAsSlice + 'a,
 {
     type Key = K;
-    type Lookup = HashLookup<K, &'a P>;
+    type Lookup = HashStore<K, &'a P>;
 
     fn create_view<It>(&'a self, keys: It) -> View<Self::Lookup>
     where
@@ -66,11 +61,11 @@ where
             }
         }
 
-        View::new(HashLookup(map))
+        View::new(HashStore(map))
     }
 }
 
-impl<K, P> Store for HashLookup<K, P>
+impl<K, P> Store for HashStore<K, P>
 where
     K: Hash + Eq,
     P: KeyPosition,
@@ -96,26 +91,38 @@ where
     }
 
     fn with_capacity(capacity: usize) -> Self {
-        HashLookup(HashMap::with_capacity(capacity))
+        HashStore(HashMap::with_capacity(capacity))
     }
 }
 
-/// Implementation for extending the [`Lookup`].
-#[repr(transparent)]
-pub struct HashLookupExt<K, P>(HashLookup<K, P>);
+pub struct HashLookup<K, P>(PhantomData<K>, PhantomData<P>);
 
-impl<K, P> Deref for HashLookup<K, P> {
-    type Target = HashLookupExt<K, P>;
+impl<K, P> Lookup<HashStore<K, P>, P> for HashLookup<K, P>
+where
+    P: KeyPosition,
+    K: Hash + Eq,
+{
+    fn new() -> Self {
+        Self(PhantomData, PhantomData)
+    }
+}
+
+/// Implementation for extending the [`Retriever`].
+#[repr(transparent)]
+pub struct HashStoreExt<K, P>(HashStore<K, P>);
+
+impl<K, P> Deref for HashStore<K, P> {
+    type Target = HashStoreExt<K, P>;
 
     fn deref(&self) -> &Self::Target {
         // SAFTY:
         // self is a valid pointer and
-        // HashLookupExt is repr(transparent) thus has the same memory layout like HashLookup
-        unsafe { &*(self as *const HashLookup<K, P> as *const HashLookupExt<K, P>) }
+        // HashStoreExt is repr(transparent) thus has the same memory layout like HashStore
+        unsafe { &*(self as *const HashStore<K, P> as *const HashStoreExt<K, P>) }
     }
 }
 
-impl<K, P> HashLookupExt<K, P> {
+impl<K, P> HashStoreExt<K, P> {
     pub fn keys(&self) -> impl Iterator<Item = &'_ K> {
         self.0 .0.keys()
     }
@@ -124,10 +131,13 @@ impl<K, P> HashLookupExt<K, P> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::lookup::store::position::UniqueKeyPosition;
+
+    type UniqueKeyHash<K = String, X = usize> = HashStore<K, UniqueKeyPosition<X>>;
 
     #[test]
     fn create_view() {
-        let mut idx = UniquePosHash::with_capacity(5);
+        let mut idx = UniqueKeyHash::with_capacity(5);
         idx.insert(String::from("a"), 0);
         idx.insert(String::from("b"), 1);
         idx.insert(String::from("c"), 2);
@@ -158,7 +168,7 @@ mod tests {
 
     #[test]
     fn store_and_lookup() {
-        let mut idx = UniquePosHash::with_capacity(5);
+        let mut idx = UniqueKeyHash::with_capacity(5);
         idx.insert(String::from("a"), 0);
         idx.insert(String::from("b"), 1);
         idx.insert(String::from("c"), 2);

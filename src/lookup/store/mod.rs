@@ -2,64 +2,12 @@
 //!
 pub mod position;
 
-/// Store is an container which the mapping between the `Key`s and they `Position`s stored.
-///
-pub trait Store {
-    type Key;
-    type Pos;
+use position::{KeyPosition, MultiKeyPosition, UniqueKeyPosition};
 
-    /// Insert an `Key` with the associated `Position`s.
-    ///
-    fn insert(&mut self, key: Self::Key, pos: Self::Pos);
-
-    /// Update means: `Key` changed, but `Position` stays the same.
-    ///
-    fn update(&mut self, old_key: Self::Key, pos: Self::Pos, new_key: Self::Key) {
-        self.delete(old_key, &pos);
-        self.insert(new_key, pos);
-    }
-
-    /// Delete means: if an `Key` has more than one `Position`, then remove only the given `Position`:
-    /// If the `Key` not exist, then is `delete`ignored:
-    ///
-    fn delete(&mut self, key: Self::Key, pos: &Self::Pos);
-
-    /// To reduce memory allocations can create an `Store` with capacity.
-    ///
-    fn with_capacity(capacity: usize) -> Self;
-
-    /// Create a new `Store` from a given `List` (array, slice, Vec, ...) with a given `Key`.
-    /// The `Index-Type` is `usize`.
-    fn from_list<'a, I: 'a, F, It>(field: &F, it: It) -> Self
-    where
-        It: Iterator<Item = &'a I> + ExactSizeIterator,
-        F: Fn(&I) -> Self::Key,
-        Self: Store<Pos = usize> + Sized,
-    {
-        let mut store = Self::with_capacity(it.len());
-        it.enumerate()
-            .for_each(|(pos, item)| store.insert(field(item), pos));
-        store
-    }
-
-    /// Create a new `Store` from a given `Map` (`Key-Index-Pair`).
-    fn from_map<'a, I: 'a, F, It>(field: &F, it: It) -> Self
-    where
-        It: Iterator<Item = (&'a Self::Pos, &'a I)> + ExactSizeIterator,
-        F: Fn(&I) -> Self::Key,
-        Self: Sized,
-        Self::Pos: Clone + 'a,
-    {
-        let mut store = Self::with_capacity(it.len());
-        it.for_each(|(pos, item)| store.insert(field(item), pos.clone()));
-        store
-    }
-}
-
-/// Lookup for `Key`s. This a base Trait for more retrieval implementations.
+/// Retriever for `Key`s. This a base Trait for more retrieval implementations.
 /// Returns the positions for the searching `Key`, which the `Store` contains.
 ///
-pub trait Lookup<Q> {
+pub trait Retriever<Q> {
     type Pos;
 
     /// Check, that the given key exist.
@@ -85,11 +33,11 @@ pub trait Lookup<Q> {
     }
 }
 
-impl<L, Q> Lookup<Q> for &L
+impl<R, Q> Retriever<Q> for &R
 where
-    L: Lookup<Q>,
+    R: Retriever<Q>,
 {
-    type Pos = L::Pos;
+    type Pos = R::Pos;
 
     fn key_exist(&self, key: Q) -> bool {
         (*self).key_exist(key)
@@ -97,6 +45,86 @@ where
 
     fn pos_by_key(&self, key: Q) -> &[Self::Pos] {
         (*self).pos_by_key(key)
+    }
+}
+
+/// Store is an container which the mapping between the `Key`s and they `Position`s stored.
+///
+pub trait Store {
+    type Key;
+    type Pos;
+
+    /// Insert an `Key` with the associated `Position`s.
+    ///
+    fn insert(&mut self, key: Self::Key, pos: Self::Pos);
+
+    /// Update means: `Key` changed, but `Position` stays the same.
+    ///
+    fn update(&mut self, old_key: Self::Key, pos: Self::Pos, new_key: Self::Key) {
+        self.delete(old_key, &pos);
+        self.insert(new_key, pos);
+    }
+
+    /// Delete means: if an `Key` has more than one `Position`, then remove only the given `Position`:
+    /// If the `Key` not exist, then is `delete`ignored:
+    ///
+    fn delete(&mut self, key: Self::Key, pos: &Self::Pos);
+
+    /// To reduce memory allocations can create an `Store` with capacity.
+    ///
+    fn with_capacity(capacity: usize) -> Self;
+}
+
+pub trait Lookup<S, P>
+where
+    S: Store,
+    P: KeyPosition,
+{
+    fn new() -> Self;
+
+    // Create an `Lookup` for an unique `Key`.
+    fn with_unique_key() -> Self
+    where
+        P::Pos: PartialEq,
+        Self: Lookup<S, UniqueKeyPosition<P::Pos>> + Sized,
+    {
+        Lookup::<S, UniqueKeyPosition<P::Pos>>::new()
+    }
+
+    // Create an `Lookup` for an multiple `Key`s.
+    fn with_multi_keys() -> Self
+    where
+        P::Pos: Ord,
+        Self: Lookup<S, MultiKeyPosition<P::Pos>> + Sized,
+    {
+        Lookup::<S, MultiKeyPosition<P::Pos>>::new()
+    }
+
+    /// Create a new `Store` for a `collection` from type `list` (e.g. `LkupVec`).
+    /// The `Pos`-Type is always `usize`.
+    fn new_list_store<'a, F, K, It, I: 'a>(&self, field: &F, it: It) -> S
+    where
+        It: Iterator<Item = &'a I> + ExactSizeIterator,
+        F: Fn(&I) -> K,
+        S: Store<Key = K, Pos = usize>,
+    {
+        let mut store = S::with_capacity(it.len());
+        it.enumerate()
+            .for_each(|(pos, item)| store.insert(field(item), pos));
+        store
+    }
+
+    /// Create a new `Store` for a `collection` from type `map` (e.g. `LkupHashMap`).
+    fn new_map_store<'a, F, K, It, I: 'a>(&self, field: &F, it: It) -> S
+    where
+        It: Iterator<Item = (&'a P::Pos, &'a I)> + ExactSizeIterator,
+        F: Fn(&I) -> K,
+        S: Store<Key = K, Pos = P::Pos>,
+        P::Pos: Clone + 'a,
+    {
+        let mut store = S::with_capacity(it.len());
+        it.for_each(|(pos, item)| store.insert(field(item), pos.clone()));
+        store
     }
 }
 
@@ -122,9 +150,9 @@ impl<L> View<L> {
     }
 }
 
-impl<L, Q> Lookup<Q> for View<L>
+impl<L, Q> Retriever<Q> for View<L>
 where
-    L: Lookup<Q>,
+    L: Retriever<Q>,
 {
     type Pos = L::Pos;
 
@@ -148,26 +176,26 @@ where
     }
 }
 
-/// `Positions` is an `Iterator` for the result from [`Lookup::pos_by_many_keys()`].
-pub struct Positions<'a, L: Lookup<Q>, Q, Keys> {
-    lookup: &'a L,
+/// `Positions` is an `Iterator` for the result from [`Retriever::pos_by_many_keys()`].
+pub struct Positions<'a, L: Retriever<Q>, Q, Keys> {
+    retriever: &'a L,
     keys: Keys,
     pos_iter: std::slice::Iter<'a, L::Pos>,
 }
 
 impl<'a, L, Q, Keys> Positions<'a, L, Q, Keys>
 where
-    L: Lookup<Q>,
+    L: Retriever<Q>,
     Keys: Iterator<Item = Q> + 'a,
 {
-    pub(crate) fn new(lookup: &'a L, mut keys: Keys) -> Self {
+    pub(crate) fn new(retriever: &'a L, mut keys: Keys) -> Self {
         let pos_iter = match keys.next() {
-            Some(k) => lookup.pos_by_key(k).iter(),
+            Some(k) => retriever.pos_by_key(k).iter(),
             None => [].iter(),
         };
 
         Self {
-            lookup,
+            retriever,
             keys,
             pos_iter,
         }
@@ -176,7 +204,7 @@ where
 
 impl<'a, L, Q, Keys> Iterator for Positions<'a, L, Q, Keys>
 where
-    L: Lookup<Q> + 'a,
+    L: Retriever<Q> + 'a,
     Keys: Iterator<Item = Q> + 'a,
     Self: 'a,
 {
@@ -189,7 +217,7 @@ where
 
         loop {
             let next_key = self.keys.next()?;
-            let next_pos = self.lookup.pos_by_key(next_key);
+            let next_pos = self.retriever.pos_by_key(next_key);
             if !next_pos.is_empty() {
                 self.pos_iter = next_pos.iter();
                 return self.pos_iter.next();
@@ -202,7 +230,7 @@ where
 mod tests {
     use super::*;
     use crate::lookup::store::position::{
-        KeyPosition, KeyPositionAsSlice, MultiKeyPositon, UniqueKeyPositon,
+        KeyPosition, KeyPositionAsSlice, MultiKeyPosition, UniqueKeyPosition,
     };
     use rstest::rstest;
     use std::{borrow::Borrow, collections::HashMap, hash::Hash};
@@ -211,13 +239,13 @@ mod tests {
         idx: HashMap<K, P>,
     }
 
-    impl MapIndex<String, UniqueKeyPositon<usize>> {
+    impl MapIndex<String, UniqueKeyPosition<usize>> {
         fn new() -> Self {
             let mut idx = HashMap::new();
-            idx.insert("a".into(), UniqueKeyPositon::from_pos(0));
-            idx.insert("b".into(), UniqueKeyPositon::from_pos(1));
-            idx.insert("c".into(), UniqueKeyPositon::from_pos(2));
-            idx.insert("s".into(), UniqueKeyPositon::from_pos(4));
+            idx.insert("a".into(), UniqueKeyPosition::from_pos(0));
+            idx.insert("b".into(), UniqueKeyPosition::from_pos(1));
+            idx.insert("c".into(), UniqueKeyPosition::from_pos(2));
+            idx.insert("s".into(), UniqueKeyPosition::from_pos(4));
             Self { idx }
         }
     }
@@ -241,7 +269,7 @@ mod tests {
         }
     }
 
-    impl<Q, K, P> Lookup<&Q> for MapIndex<K, P>
+    impl<Q, K, P> Retriever<&Q> for MapIndex<K, P>
     where
         K: Borrow<Q> + Hash + Eq,
         Q: Hash + Eq + ?Sized,
@@ -291,7 +319,7 @@ mod tests {
     #[case::m_z_a_m_m(vec!["m", "z", "a", "m", "m"], vec![&5, &1])]
     fn iter_unique_positions(#[case] keys: Vec<&str>, #[case] expected: Vec<&usize>) {
         let items = vec!["x", "a", "b", "c", "y", "z"];
-        let map = MapIndex::<&str, UniqueKeyPositon<usize>>::from_vec(items);
+        let map = MapIndex::<&str, UniqueKeyPosition<usize>>::from_vec(items);
         assert_eq!(expected, map.pos_by_many_keys(keys).collect::<Vec<_>>());
     }
 
@@ -310,7 +338,7 @@ mod tests {
     #[case::a_double_x(vec!["a", "x"], vec![&1, &0, &4])]
     fn iter_multi_positions(#[case] keys: Vec<&str>, #[case] expected: Vec<&usize>) {
         let items = vec!["x", "a", "b", "c", "x", "y", "z"];
-        let map = MapIndex::<&str, MultiKeyPositon<usize>>::from_vec(items);
+        let map = MapIndex::<&str, MultiKeyPosition<usize>>::from_vec(items);
         assert_eq!(expected, map.pos_by_many_keys(keys).collect::<Vec<_>>());
     }
 }

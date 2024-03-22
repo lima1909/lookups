@@ -1,7 +1,10 @@
 //! `Read write` implementations for lookup collections `HashMap`.
 //!
 
-use crate::{collections::map::ro, lookup::store::Store};
+use crate::{
+    collections::map::ro,
+    lookup::store::{position::KeyPosition, Lookup, Store},
+};
 use std::{borrow::Borrow, hash::Hash, ops::Deref};
 
 #[cfg(feature = "hashbrown")]
@@ -21,14 +24,16 @@ where
     S: Store<Pos = K>,
     F: Fn(&V) -> S::Key,
 {
-    pub fn new(field: F) -> Self
+    pub fn new<L, P>(lookup: L, field: F) -> Self
     where
+        L: Lookup<S, P>,
+        P: KeyPosition<Pos = K>,
         F: Clone,
         K: Clone,
     {
         Self {
             field: field.clone(),
-            inner: ro::LkupHashMap::new(field, HashMap::new()),
+            inner: ro::LkupHashMap::new(lookup, field, HashMap::new()),
         }
     }
 
@@ -81,14 +86,14 @@ impl<S, K, V, F> Deref for LkupHashMap<S, K, V, F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lookup::{hash::UniquePosHash, index::MultiPosIndex};
+    use crate::{HashLookup, IndexLookup};
 
     #[derive(Debug, PartialEq)]
     struct Car(usize, String);
 
     #[test]
     fn map_key_string() {
-        let mut m = LkupHashMap::<MultiPosIndex<_, String>, _, Car, _>::new(|c| c.0);
+        let mut m = LkupHashMap::new(IndexLookup::with_multi_keys(), |c: &Car| c.0);
         m.insert(String::from("Audi"), Car(99, String::from("Audi")));
         m.insert(String::from("BMW"), Car(1, String::from("BMW")));
 
@@ -120,7 +125,7 @@ mod tests {
 
     #[test]
     fn map_key_usize() {
-        let mut m = LkupHashMap::<UniquePosHash<String, usize>, _, Car, _>::new(|c| c.1.clone());
+        let mut m = LkupHashMap::new(HashLookup::with_unique_key(), |c: &Car| c.1.clone());
         m.insert(99, Car(99, String::from("Audi")));
         m.insert(1, Car(1, String::from("BMW")));
 

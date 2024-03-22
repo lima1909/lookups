@@ -1,7 +1,10 @@
 //! `Read write` implementations for lookup collections `Vec`.
 //!
 
-use crate::{collections::list::ro, lookup::store::Store};
+use crate::{
+    collections::list::ro,
+    lookup::store::{position::KeyPosition, Lookup, Store},
+};
 use std::ops::Deref;
 
 /// [`LkupVec`] is a [`std::vec::Vec`] with one `Lookup`.
@@ -15,9 +18,9 @@ use std::ops::Deref;
 ///     name: String,
 /// }
 ///
-/// use lookups::{collections::LkupVec, lookup::hash::MultiPosHash};
+/// use lookups::{LkupVec, HashLookup, Lookup};
 ///
-/// let mut vec = LkupVec::<MultiPosHash, Person, _>::new(|p| p.name.clone());
+/// let mut vec = LkupVec::new(HashLookup::with_multi_keys(), |p: &Person| p.name.clone());
 ///
 /// vec.push(Person{id: 0, name: "Paul".into()});
 /// vec.push(Person{id: 5, name: "Mario".into()});
@@ -50,23 +53,14 @@ where
     S: Store<Pos = usize>,
     F: Fn(&I) -> S::Key,
 {
-    // pub fn new<V>(field: F, items: V) -> Self
-    // where
-    //     V: Into<Vec<I>>,
-    //     F: Clone,
-    // {
-    //     Self {
-    //         inner: ro::LkupList::new(field.clone(), items.into()),
-    //         field,
-    //     }
-    // }
-
-    pub fn new(field: F) -> Self
+    pub fn new<L, P>(lookup: L, field: F) -> Self
     where
+        L: Lookup<S, P>,
+        P: KeyPosition<Pos = usize>,
         F: Clone,
     {
         Self {
-            inner: ro::LkupList::new(field.clone(), Vec::new()),
+            inner: ro::LkupList::new(lookup, field.clone(), Vec::new()),
             field,
         }
     }
@@ -140,7 +134,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lookup::hash::MultiPosHash;
+    use crate::lookup::hash::HashLookup;
 
     #[derive(PartialEq, Debug, Clone)]
     struct Person {
@@ -163,7 +157,7 @@ mod tests {
 
     #[test]
     fn lkupvec() {
-        let mut v = LkupVec::<MultiPosHash, _, _>::new(Person::name);
+        let mut v = LkupVec::new(HashLookup::with_multi_keys(), Person::name);
         v.push(Person::new(1, "Anna"));
         v.push(Person::new(0, "Paul"));
 

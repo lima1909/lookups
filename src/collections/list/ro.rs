@@ -1,7 +1,7 @@
 //! `Read only` implementations for lookup collections [`LkupList`] like `Vec`, `Slice`, ...
 //!
-use crate::collections::{list::ListIndex, Retriever};
-use crate::lookup::store::{Store, View, ViewCreator};
+use crate::collections::{list::ListIndex, Retrieve};
+use crate::lookup::store::{position::KeyPosition, Lookup, Store, View, ViewCreator};
 use std::ops::{Deref, Index};
 
 /// [`LkupList`] is a read only lookup extenstion for a [`std::vec::Vec`].
@@ -19,9 +19,9 @@ use std::ops::{Deref, Index};
 ///             Person{id: 5, name: "Mario".into()},
 ///             Person{id: 2, name: "Jasmin".into()}];
 ///
-/// use lookups::{collections::list::ro::LkupList, lookup::hash::UniquePosHash};
+/// use lookups::{collections::list::ro::LkupList, HashLookup, Lookup};
 ///
-/// let vec = LkupList::<UniquePosHash, _>::new(|p| p.name.clone(), data);
+/// let vec = LkupList::new(HashLookup::with_unique_key(), |p| p.name.clone(), data);
 ///
 /// assert!(vec.lkup().contains_key("Paul")); // lookup with a given Key
 ///
@@ -44,32 +44,35 @@ pub struct LkupList<S, I> {
     pub(crate) items: I,
 }
 
-impl<S, I> LkupList<S, I> {
-    pub fn new<F, T>(field: F, items: I) -> Self
+impl<S, I> LkupList<S, I>
+where
+    S: Store<Pos = usize>,
+{
+    pub fn new<L, P, F, T>(lookup: L, field: F, items: I) -> Self
     where
-        I: AsRef<[T]>,
+        L: Lookup<S, P>,
+        P: KeyPosition<Pos = usize>,
         F: Fn(&T) -> S::Key,
-        S: Store<Pos = usize>,
+        I: AsRef<[T]>,
     {
-        let items_ref = items.as_ref();
-        let store = S::from_list(&field, items_ref.iter());
+        let store = lookup.new_list_store(&field, items.as_ref().iter());
         Self { store, items }
     }
 
-    pub fn lkup(&self) -> Retriever<&S, ListIndex<'_, I>> {
-        Retriever::new(&self.store, ListIndex(&self.items))
+    pub fn lkup(&self) -> Retrieve<&S, ListIndex<'_, I>> {
+        Retrieve::new(&self.store, ListIndex(&self.items))
     }
 
     pub fn create_lkup_view<'a, It>(
         &'a self,
         keys: It,
-    ) -> Retriever<View<S::Lookup>, ListIndex<'a, I>>
+    ) -> Retrieve<View<S::Lookup>, ListIndex<'a, I>>
     where
-        S: ViewCreator<'a>,
         It: IntoIterator<Item = <S as ViewCreator<'a>>::Key>,
+        S: ViewCreator<'a>,
     {
         let view = self.store.create_view(keys);
-        Retriever::new(view, ListIndex(&self.items))
+        Retrieve::new(view, ListIndex(&self.items))
     }
 }
 
@@ -84,14 +87,14 @@ impl<S, I: Index<usize>> Deref for LkupList<S, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lookup::{hash::UniquePosHash, index::UniquePosIndex};
+    use crate::lookup::{hash::HashLookup, index::IndexLookup};
 
     #[derive(Debug, PartialEq)]
     struct Car(u16, String);
 
     impl Car {
-        fn id(&self) -> usize {
-            self.0.into()
+        fn id(&self) -> u16 {
+            self.0
         }
 
         fn name(&self) -> String {
@@ -102,7 +105,7 @@ mod tests {
     #[test]
     fn lkuplist_u16() {
         let items = [Car(99, "Audi".into()), Car(1, "BMW".into())];
-        let v = LkupList::<UniquePosIndex, _>::new(Car::id, items);
+        let v = LkupList::new(IndexLookup::with_multi_keys(), Car::id, items);
 
         assert_eq!(2, v.len());
 
@@ -134,7 +137,7 @@ mod tests {
     #[test]
     fn lkuplist_string() {
         let items = vec![Car(99, "Audi".into()), Car(0, "BMW".into())];
-        let v = LkupList::<UniquePosHash, _>::new(Car::name, items);
+        let v = LkupList::new(HashLookup::with_unique_key(), Car::name, items);
 
         assert!(v.lkup().contains_key("Audi"));
         assert!(!v.lkup().contains_key("VW"));

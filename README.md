@@ -30,7 +30,7 @@ The fast access can be achieved by using different methods, like;
 ### How can I use it?
 
 ```rust
-use lookups::{collections::LkupHashMap, lookup::index::UniquePosIndex};
+use lookups::{LkupHashMap, IndexLookup, Lookup};
 
 #[derive(PartialEq, Debug)]
 struct Car {
@@ -38,8 +38,8 @@ struct Car {
     name: String,
 }
 
-// create a new Lookup HashMap: LkupMap with a UniquePosIndex
-let mut map = LkupHashMap::<UniquePosIndex<usize, String>, _, _, _>::new(|c: &Car| c.id);
+// create a new Lookup HashMap: LkupMap with a unique `Key` lookup
+let mut map = LkupHashMap::new(IndexLookup::with_unique_key() ,|c: &Car| c.id);
 map.insert(String::from("BMW"),  Car{id: 0, name: "BMW".into()});
 map.insert(String::from("Audi"), Car{id: 5, name: "Audi".into()});
 map.insert(String::from("VW"),   Car{id: 2, name: "VW".into()});
