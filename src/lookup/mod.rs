@@ -2,7 +2,7 @@
 //!
 //! A `Lookup` is a mapping from a `Key` to one ore more `Positions`:
 //!
-//! - the `Key`: ist the value, what to look for (like a key by a HashMap)
+//! - the `Key`: ist the value, what to looking for (like a key by a HashMap)
 //! - the `Position`: is the location, where the `Key` is saved (the index, by Vec, or the key, by a HashMap)
 //!   (`Position` is equivalent to the [`std::ops::Index`]).
 //!   There are two kinds of `Key`s

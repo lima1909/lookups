@@ -14,12 +14,12 @@ type HashMap<K, V> = hashbrown::HashMap<K, V>;
 type HashMap<K, V> = std::collections::HashMap<K, V>;
 
 #[derive(Debug)]
-pub struct LkupHashMap<S, K, V, F> {
+pub struct LkupHashMap<S, F, K, V> {
     field: F,
     inner: ro::LkupHashMap<S, K, V>,
 }
 
-impl<S, K, V, F> LkupHashMap<S, K, V, F>
+impl<S, F, K, V> LkupHashMap<S, F, K, V>
 where
     S: Store<Pos = K>,
     F: Fn(&V) -> S::Key,
@@ -75,7 +75,7 @@ where
     }
 }
 
-impl<S, K, V, F> Deref for LkupHashMap<S, K, V, F> {
+impl<S, F, K, V> Deref for LkupHashMap<S, F, K, V> {
     type Target = ro::LkupBaseMap<S, HashMap<K, V>>;
 
     fn deref(&self) -> &Self::Target {
@@ -89,7 +89,7 @@ mod tests {
     use crate::{HashLookup, IndexLookup};
 
     #[derive(Debug, PartialEq)]
-    struct Car(usize, String);
+    struct Car(u16, String);
 
     #[test]
     fn map_key_string() {

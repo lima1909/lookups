@@ -43,12 +43,12 @@ use std::ops::Deref;
 ///
 
 #[derive(Debug)]
-pub struct LkupVec<S, I, F> {
+pub struct LkupVec<S, F, I> {
     field: F,
     inner: ro::LkupList<S, Vec<I>>,
 }
 
-impl<S, I, F> LkupVec<S, I, F>
+impl<S, F, I> LkupVec<S, F, I>
 where
     S: Store<Pos = usize>,
     F: Fn(&I) -> S::Key,
@@ -91,7 +91,7 @@ where
     }
 }
 
-impl<S, I, F> Deref for LkupVec<S, I, F> {
+impl<S, F, I> Deref for LkupVec<S, F, I> {
     type Target = ro::LkupList<S, Vec<I>>;
 
     fn deref(&self) -> &Self::Target {

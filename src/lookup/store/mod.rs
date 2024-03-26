@@ -75,6 +75,7 @@ pub trait Store {
     fn with_capacity(capacity: usize) -> Self;
 }
 
+/// `Lookup` creates the unique or multi `Key` lookup.
 pub trait Lookup<S, P>
 where
     S: Store,
@@ -91,7 +92,7 @@ where
         Lookup::<S, UniqueKeyPosition<P::Pos>>::new()
     }
 
-    // Create an `Lookup` for an multiple `Key`s.
+    // Create an `Lookup` for multiple `Key`s.
     fn with_multi_keys() -> Self
     where
         P::Pos: Ord,

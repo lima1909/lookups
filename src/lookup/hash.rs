@@ -15,6 +15,19 @@ type HashMap<K, V> = hashbrown::HashMap<K, V>;
 #[cfg(not(feature = "hashbrown"))]
 type HashMap<K, V> = std::collections::HashMap<K, V>;
 
+/// `IndexLookup` is the creator for the `HashStore`: `Retriever` and `Store`.
+pub struct HashLookup<K, P>(PhantomData<K>, PhantomData<P>);
+
+impl<K, P> Lookup<HashStore<K, P>, P> for HashLookup<K, P>
+where
+    P: KeyPosition,
+    K: Hash + Eq,
+{
+    fn new() -> Self {
+        Self(PhantomData, PhantomData)
+    }
+}
+
 /// `HashStore` is an implementation for an hash index.
 ///
 #[derive(Debug)]
@@ -92,18 +105,6 @@ where
 
     fn with_capacity(capacity: usize) -> Self {
         HashStore(HashMap::with_capacity(capacity))
-    }
-}
-
-pub struct HashLookup<K, P>(PhantomData<K>, PhantomData<P>);
-
-impl<K, P> Lookup<HashStore<K, P>, P> for HashLookup<K, P>
-where
-    P: KeyPosition,
-    K: Hash + Eq,
-{
-    fn new() -> Self {
-        Self(PhantomData, PhantomData)
     }
 }
 

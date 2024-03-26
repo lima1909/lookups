@@ -20,6 +20,19 @@ use crate::lookup::store::{
 };
 use std::{marker::PhantomData, ops::Deref};
 
+/// `IndexLookup` is the creator for the `IndexStore`: `Retriever` and `Store`.
+pub struct IndexLookup<K, P>(PhantomData<K>, PhantomData<P>);
+
+impl<K, P> Lookup<IndexStore<K, P>, P> for IndexLookup<K, P>
+where
+    K: Into<usize> + Clone,
+    P: KeyPosition + Clone,
+{
+    fn new() -> Self {
+        Self(PhantomData, PhantomData)
+    }
+}
+
 /// `Key` is from type [`usize`] and the information are saved in a List (Store).
 #[derive(Debug)]
 #[repr(transparent)]
@@ -35,6 +48,7 @@ where
     fn key_exist(&self, key: K) -> bool {
         matches!(self.0.get(key.into()), Some(Some(_)))
     }
+
     fn pos_by_key(&self, key: K) -> &[Self::Pos] {
         match self.0.get(key.into()) {
             Some(Some((_, p))) => p.as_position_slice(),
@@ -107,18 +121,6 @@ where
 
     fn with_capacity(capacity: usize) -> Self {
         Self(Vec::with_capacity(capacity))
-    }
-}
-
-pub struct IndexLookup<K, P>(PhantomData<K>, PhantomData<P>);
-
-impl<K, P> Lookup<IndexStore<K, P>, P> for IndexLookup<K, P>
-where
-    K: Into<usize> + Clone,
-    P: KeyPosition + Clone,
-{
-    fn new() -> Self {
-        Self(PhantomData, PhantomData)
     }
 }
 
