@@ -89,6 +89,32 @@ where
             },
         )
     }
+
+    /// The Item on index `pos` in the list will be removed.
+    ///
+    /// ## Hint:
+    /// The remove is a swap_remove ([`std::vec::Vec::swap_remove`])
+    ///
+    /// ## Panics
+    /// Panics if index is out of bounds.
+    pub fn remove(&mut self, pos: usize) -> I {
+        // last item in the list
+        if pos == self.inner.len() - 1 {
+            let rm_item = self.inner.items.remove(pos);
+            self.inner.store.delete((self.field)(&rm_item), &pos);
+            return rm_item;
+        }
+
+        // remove item and entry in store and swap with last item
+        let rm_item = self.inner.items.swap_remove(pos);
+        self.inner.store.delete((self.field)(&rm_item), &pos);
+
+        // formerly last item, now item on pos, the swap for the store
+        let curr_item = &self.inner[pos];
+        self.inner.store.insert((self.field)(curr_item), pos);
+
+        rm_item
+    }
 }
 
 impl<S, F, I> Deref for LkupVec<S, F, I> {
@@ -150,6 +176,10 @@ mod tests {
             }
         }
 
+        fn id(&self) -> usize {
+            self.id
+        }
+
         fn name(&self) -> String {
             self.name.clone()
         }
@@ -186,5 +216,28 @@ mod tests {
             view.get_by_key("Paul").next().unwrap()
         );
         assert!(view.get_by_key("Anna").next().is_none());
+    }
+
+    #[test]
+    fn remove() {
+        let mut v = LkupVec::new(HashLookup::with_multi_keys(), Person::id);
+        v.push(Person::new(1, "Anna"));
+        v.push(Person::new(2, "Paul"));
+
+        assert_eq!(2, v.len());
+
+        assert_eq!(Person::new(1, "Anna"), v.remove(0));
+        assert_eq!(1, v.len());
+        assert_eq!(Person::new(2, "Paul"), v[0]);
+
+        assert_eq!(Person::new(2, "Paul"), v.remove(0));
+        assert_eq!(0, v.len());
+    }
+
+    #[test]
+    #[should_panic]
+    fn remove_panic() {
+        let mut v = LkupVec::new(HashLookup::with_multi_keys(), Person::id);
+        assert_eq!(Person::new(2, "Paul"), v.remove(0));
     }
 }
