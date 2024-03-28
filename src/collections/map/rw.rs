@@ -2,10 +2,10 @@
 //!
 
 use crate::{
-    collections::map::ro,
-    lookup::store::{position::KeyPosition, Lookup, Store},
+    collections::{map::ro, Edit},
+    lookup::store::{position::KeyPosition, Lookup, Retriever, Store},
 };
-use std::{borrow::Borrow, hash::Hash, ops::Deref};
+use std::{hash::Hash, ops::Deref};
 
 #[cfg(feature = "hashbrown")]
 type HashMap<K, V> = hashbrown::HashMap<K, V>;
@@ -44,35 +44,6 @@ where
         self.inner.0.store.insert((self.field)(&item), key.clone());
         self.inner.0.items.insert(key, item)
     }
-
-    pub fn update<Q, U>(&mut self, key: &Q, mut update_fn: U) -> Option<&V>
-    where
-        U: FnMut(&mut V),
-        K: Borrow<Q> + Hash + Eq,
-        Q: ToOwned<Owned = K> + Hash + Eq + ?Sized,
-    {
-        let v = self.inner.0.items.get_mut(key)?;
-        let old_key = (self.field)(v);
-        update_fn(v);
-        self.inner
-            .0
-            .store
-            .update(old_key, key.to_owned(), (self.field)(v));
-        Some(v)
-    }
-
-    pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
-    where
-        K: Borrow<Q> + Hash + Eq,
-        Q: ToOwned<Owned = K> + Hash + Eq + ?Sized,
-    {
-        let removed = self.inner.0.items.remove(key)?;
-        self.inner
-            .0
-            .store
-            .delete((self.field)(&removed), &key.to_owned());
-        Some(removed)
-    }
 }
 
 impl<S, F, K, V> Deref for LkupHashMap<S, F, K, V> {
@@ -80,6 +51,39 @@ impl<S, F, K, V> Deref for LkupHashMap<S, F, K, V> {
 
     fn deref(&self) -> &Self::Target {
         &self.inner
+    }
+}
+
+impl<S, F, K, V> Edit<K, V> for LkupHashMap<S, F, K, V>
+where
+    S: Store<Pos = K>,
+    F: Fn(&V) -> S::Key,
+    K: Hash + Eq,
+{
+    type Retriever = S;
+
+    fn update<U>(&mut self, key: K, mut update: U) -> Option<&V>
+    where
+        U: FnMut(&mut V),
+    {
+        let v = self.inner.0.items.get_mut(&key)?;
+        let old_key = (self.field)(v);
+        update(v);
+        self.inner.0.store.update(old_key, key, (self.field)(v));
+        Some(v)
+    }
+
+    fn remove(&mut self, key: K) -> Option<V> {
+        let removed = self.inner.0.items.remove(&key)?;
+        self.inner.0.store.delete((self.field)(&removed), &key);
+        Some(removed)
+    }
+
+    fn get_indices_by_key<Q>(&self, key: Q) -> &[K]
+    where
+        Self::Retriever: Retriever<Q, Pos = K>,
+    {
+        self.inner.store.pos_by_key(key)
     }
 }
 
@@ -109,18 +113,33 @@ mod tests {
         // update
         assert_eq!(
             Some(&Car(1_000, String::from("BMW"))),
-            m.update("BMW", |c| c.0 = 1_000)
+            m.update(String::from("BMW"), |c| c.0 = 1_000)
         );
         assert!(m.lkup().contains_key(1_000));
 
-        assert_eq!(None, m.update("NotFound", |_c| {}));
+        assert_eq!(None, m.update("NotFound".into(), |_c| {}));
+
+        // update by lookup-key
+        assert_eq!(1, m.update_by_key(1_000, |c| c.0 = 1));
+        assert_eq!(0, m.update_by_key(1_000, |c| c.0 = 1_000));
+        assert_eq!(1, m.update_by_key(1, |c| c.0 = 1_000));
 
         // remove
         assert_eq!(2, m.len());
-        assert_eq!(Some(Car(1_000, String::from("BMW"))), m.remove("BMW"));
+        assert_eq!(
+            Some(Car(1_000, String::from("BMW"))),
+            m.remove("BMW".into())
+        );
         assert!(!m.contains_key("BMW"));
         assert!(!m.lkup().contains_key(1_000));
         assert_eq!(1, m.len());
+
+        // remove by lookup-key
+        assert_eq!(0, m.remove_by_key(2));
+        assert_eq!(1, m.len());
+
+        assert_eq!(1, m.remove_by_key(99));
+        assert_eq!(0, m.len());
     }
 
     #[test]
@@ -141,15 +160,15 @@ mod tests {
         // update
         assert_eq!(
             Some(&Car(1, String::from("VW"))),
-            m.update(&1, |c| c.1 = String::from("VW"))
+            m.update(1, |c| c.1 = String::from("VW"))
         );
         assert!(m.lkup().contains_key("VW"));
 
-        assert_eq!(None, m.update(&1_000, |_c| {}));
+        assert_eq!(None, m.update(1_000, |_c| {}));
 
         // remove
         assert_eq!(2, m.len());
-        assert_eq!(Some(Car(1, String::from("VW"))), m.remove(&1));
+        assert_eq!(Some(Car(1, String::from("VW"))), m.remove(1));
         assert!(!m.contains_key(&1));
         assert!(!m.lkup().contains_key("VW"));
         assert_eq!(1, m.len());

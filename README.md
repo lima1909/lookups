@@ -30,7 +30,7 @@ The fast access can be achieved by using different methods, like;
 ### How can I use it?
 
 ```rust
-use lookups::{LkupHashMap, IndexLookup, Lookup};
+use lookups::{LkupHashMap, IndexLookup, Lookup, Edit};
 
 #[derive(PartialEq, Debug)]
 struct Car {
@@ -52,11 +52,16 @@ assert!(map.lkup().contains_key(2));
 
 // get a Car by an given: id
 assert_eq!(map.lkup().get_by_key(5).next(), Some(&Car{id: 5, name: "Audi".into()}));
-assert_eq!((map.lkup().min_key(), map.lkup().max_key()), (Some(0), Some(5)));
+
+// update entry by lookup-key
+assert_eq!(1, map.update_by_key(5, |c| c.name = "Audi-New".into()));
 
 // create a View: a subset from the Lookups (defined by the given Keys)
 let view = map.create_lkup_view([0, 2]);
 
 assert_eq!(view.get_by_key(0).next(), Some(&Car{id: 0, name: "BMW".into()}));
-assert_eq!((view.min_key(), view.max_key()), (Some(0), Some(2)));
+
+// get min and max key
+assert_eq!(view.min_key(), Some(0));
+assert_eq!(view.max_key(), Some(2));
 ```

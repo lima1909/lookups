@@ -2,10 +2,10 @@
 //!
 
 use crate::{
-    collections::list::ro,
-    lookup::store::{position::KeyPosition, Lookup, Store},
+    collections::{list::ro, Edit},
+    lookup::store::{position::KeyPosition, Lookup, Retriever, Store},
 };
-use std::ops::Deref;
+use std::{fmt::Debug, ops::Deref};
 
 /// [`LkupVec`] is a [`std::vec::Vec`] with one `Lookup`.
 ///
@@ -67,53 +67,10 @@ where
 
     /// Append a new `Item` to the List.
     pub fn push(&mut self, item: I) -> usize {
-        push(&mut self.inner.items, item, |i, idx| {
-            self.inner.store.insert((self.field)(i), idx);
-        })
-    }
-
-    /// Update an existing `Item` on given `Position` from the List.
-    /// If the `Position` exist, the method returns an `Some` with reference to the updated Item.
-    /// If not, the method returns `None`.
-    pub fn update<U>(&mut self, pos: usize, mut update_fn: U) -> Option<&I>
-    where
-        U: FnMut(&mut I),
-    {
-        update(
-            self.inner.items.as_mut_slice(),
-            pos,
-            &self.field,
-            &mut update_fn,
-            |old_key, pos, new_key| {
-                self.inner.store.update(old_key, pos, new_key);
-            },
-        )
-    }
-
-    /// The Item on index `pos` in the list will be removed.
-    ///
-    /// ## Hint:
-    /// The remove is a swap_remove ([`std::vec::Vec::swap_remove`])
-    ///
-    /// ## Panics
-    /// Panics if index is out of bounds.
-    pub fn remove(&mut self, pos: usize) -> I {
-        // last item in the list
-        if pos == self.inner.len() - 1 {
-            let rm_item = self.inner.items.remove(pos);
-            self.inner.store.delete((self.field)(&rm_item), &pos);
-            return rm_item;
-        }
-
-        // remove item and entry in store and swap with last item
-        let rm_item = self.inner.items.swap_remove(pos);
-        self.inner.store.delete((self.field)(&rm_item), &pos);
-
-        // formerly last item, now item on pos, the swap for the store
-        let curr_item = &self.inner[pos];
-        self.inner.store.insert((self.field)(curr_item), pos);
-
-        rm_item
+        let idx = self.inner.items.len();
+        self.inner.store.insert((self.field)(&item), idx);
+        self.inner.items.push(item);
+        idx
     }
 }
 
@@ -125,38 +82,74 @@ impl<S, F, I> Deref for LkupVec<S, F, I> {
     }
 }
 
-#[inline]
-fn push<I, Trigger>(items: &mut Vec<I>, item: I, mut trigger: Trigger) -> usize
+impl<S, F, I> Edit<usize, I> for LkupVec<S, F, I>
 where
-    Trigger: FnMut(&I, usize),
+    S: Store<Pos = usize>,
+    F: Fn(&I) -> S::Key,
+    I: std::fmt::Debug,
 {
-    let idx = items.len();
-    trigger(&item, idx);
-    items.push(item);
-    idx
+    type Retriever = S;
+
+    /// Update an existing `Item` on given index from the List.
+    /// If the index exist, the method returns an `Some` with reference to the updated Item.
+    /// If not, the method returns `None`.
+    fn update<U>(&mut self, index: usize, mut update: U) -> Option<&I>
+    where
+        U: FnMut(&mut I),
+    {
+        self.inner.items.get_mut(index).map(|item| {
+            let old_key = (self.field)(item);
+            update(item);
+            let new_key = (self.field)(item);
+
+            self.inner.store.update(old_key, index, new_key);
+            &*item
+        })
+    }
+
+    /// The Item on index in the list will be removed.
+    ///
+    /// ## Hint:
+    /// The remove is a swap_remove ([`std::vec::Vec::swap_remove`]).
+    fn remove(&mut self, index: usize) -> Option<I> {
+        if self.inner.items.is_empty() {
+            return None;
+        }
+
+        let last_idx = self.inner.items.len() - 1;
+        // index out of bound
+        if index > last_idx {
+            return None;
+        }
+
+        // last item in the list
+        if index == last_idx {
+            let rm_item = self.inner.items.remove(index);
+            self.inner.store.delete((self.field)(&rm_item), &index);
+            return Some(rm_item);
+        }
+
+        // remove item and entry in store and swap with last item
+        let rm_item = self.inner.items.swap_remove(index);
+        self.inner.store.delete((self.field)(&rm_item), &index);
+
+        // formerly last item, now item on index, the swap for the store
+        let curr_item = &self.inner.items[index];
+        self.inner.store.delete((self.field)(curr_item), &last_idx);
+        self.inner.store.insert((self.field)(curr_item), index);
+
+        Some(rm_item)
+    }
+
+    fn get_indices_by_key<Q>(&self, key: Q) -> &[usize]
+    where
+        S: Retriever<Q, Pos = usize>,
+    {
+        self.inner.store.pos_by_key(key)
+    }
 }
 
-#[inline]
-fn update<'a, I, F, K, U, Trigger>(
-    items: &'a mut [I],
-    pos: usize,
-    field: &F,
-    mut update: U,
-    mut trigger: Trigger,
-) -> Option<&'a I>
-where
-    F: Fn(&I) -> K,
-    U: FnMut(&mut I),
-    Trigger: FnMut(K, usize, K),
-{
-    items.get_mut(pos).map(|item| {
-        let old_key = field(item);
-        update(item);
-        trigger(old_key, pos, field(item));
-        &*item
-    })
-}
-
+//
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -226,18 +219,37 @@ mod tests {
 
         assert_eq!(2, v.len());
 
-        assert_eq!(Person::new(1, "Anna"), v.remove(0));
+        assert_eq!(Some(Person::new(1, "Anna")), v.remove(0));
         assert_eq!(1, v.len());
         assert_eq!(Person::new(2, "Paul"), v[0]);
 
-        assert_eq!(Person::new(2, "Paul"), v.remove(0));
+        assert_eq!(Some(Person::new(2, "Paul")), v.remove(0));
+        assert_eq!(0, v.len());
+
+        assert_eq!(None, v.remove(0));
         assert_eq!(0, v.len());
     }
 
     #[test]
-    #[should_panic]
-    fn remove_panic() {
+    fn remove_by_key() {
         let mut v = LkupVec::new(HashLookup::with_multi_keys(), Person::id);
-        assert_eq!(Person::new(2, "Paul"), v.remove(0));
+        v.push(Person::new(1, "Anna"));
+        v.push(Person::new(2, "Paul"));
+
+        assert_eq!(2, v.len());
+
+        // key not exist
+        v.remove_by_key(&99);
+        assert_eq!(2, v.len());
+
+        // remove key = 1 (Anna)
+        v.remove_by_key(&1);
+        assert_eq!(1, v.len());
+
+        assert!(!v.lkup().contains_key(&1));
+        assert!(v.lkup().contains_key(&2));
+
+        v.remove_by_key(&2);
+        assert_eq!(0, v.len());
     }
 }
