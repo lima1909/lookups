@@ -44,28 +44,30 @@ use std::{hash::Hash, ops::Deref};
 ///
 
 #[cfg(feature = "hashbrown")]
-type HashMap<K, V> = hashbrown::HashMap<K, V>;
+pub(crate) type HashMap<K, V> = hashbrown::HashMap<K, V>;
 
 #[cfg(not(feature = "hashbrown"))]
-type HashMap<K, V> = std::collections::HashMap<K, V>;
+pub(crate) type HashMap<K, V> = std::collections::HashMap<K, V>;
 
-#[derive(Debug)]
-#[repr(transparent)]
-pub struct LkupHashMap<S, K, V>(pub(crate) LkupBaseMap<S, HashMap<K, V>>);
+#[derive(Debug, Clone)]
+pub struct LkupHashMap<S, K, V> {
+    pub(crate) store: S,
+    pub(crate) items: HashMap<K, V>,
+}
 
 impl<S, K, V> LkupHashMap<S, K, V>
 where
     S: Store<Pos = K>,
 {
-    pub fn new<L, P, F>(lookup: L, field: F, map: HashMap<K, V>) -> Self
+    pub fn new<L, P, F>(lookup: L, field: F, items: HashMap<K, V>) -> Self
     where
         L: Lookup<S, P>,
         P: KeyPosition<Pos = K>,
         F: Fn(&V) -> S::Key,
         K: Clone,
     {
-        let store = lookup.new_map_store(&field, map.iter());
-        Self(LkupBaseMap { store, items: map })
+        let store = lookup.new_map_store(&field, items.iter());
+        Self { store, items }
     }
 
     pub fn from_iter<L, P, F, I>(lookup: L, field: F, iter: I) -> Self
@@ -78,31 +80,15 @@ where
     {
         Self::new(lookup, field, HashMap::from_iter(iter))
     }
-}
 
-impl<S, K, V> Deref for LkupHashMap<S, K, V> {
-    type Target = LkupBaseMap<S, HashMap<K, V>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-#[derive(Debug)]
-pub struct LkupBaseMap<S, I> {
-    pub(crate) store: S,
-    pub(crate) items: I,
-}
-
-impl<S, I> LkupBaseMap<S, I> {
-    pub fn lkup(&self) -> Retrieve<&S, MapIndex<'_, I>> {
+    pub fn lkup(&self) -> Retrieve<&S, MapIndex<'_, HashMap<K, V>>> {
         Retrieve::new(&self.store, MapIndex(&self.items))
     }
 
     pub fn create_lkup_view<'a, It>(
         &'a self,
         keys: It,
-    ) -> Retrieve<View<S::Lookup>, MapIndex<'_, I>>
+    ) -> Retrieve<View<S::Lookup>, MapIndex<'_, HashMap<K, V>>>
     where
         S: ViewCreator<'a>,
         It: IntoIterator<Item = <S as ViewCreator<'a>>::Key>,
@@ -112,8 +98,8 @@ impl<S, I> LkupBaseMap<S, I> {
     }
 }
 
-impl<S, I> Deref for LkupBaseMap<S, I> {
-    type Target = I;
+impl<S, K, V> Deref for LkupHashMap<S, K, V> {
+    type Target = HashMap<K, V>;
 
     fn deref(&self) -> &Self::Target {
         &self.items

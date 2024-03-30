@@ -2,7 +2,7 @@
 //!
 
 use crate::{
-    collections::{list::ro, Edit},
+    collections::list::ro,
     lookup::store::{position::KeyPosition, Lookup, Retriever, Store},
 };
 use std::{fmt::Debug, ops::Deref};
@@ -42,7 +42,7 @@ use std::{fmt::Debug, ops::Deref};
 /// ```
 ///
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LkupVec<S, F, I> {
     field: F,
     inner: ro::LkupList<S, Vec<I>>,
@@ -57,20 +57,11 @@ where
     where
         L: Lookup<S, P>,
         P: KeyPosition<Pos = usize>,
-        F: Clone,
     {
         Self {
-            inner: ro::LkupList::new(lookup, field.clone(), Vec::new()),
+            inner: ro::LkupList::new(lookup, &field, Vec::new()),
             field,
         }
-    }
-
-    /// Append a new `Item` to the List.
-    pub fn push(&mut self, item: I) -> usize {
-        let idx = self.inner.items.len();
-        self.inner.store.insert((self.field)(&item), idx);
-        self.inner.items.push(item);
-        idx
     }
 }
 
@@ -82,18 +73,23 @@ impl<S, F, I> Deref for LkupVec<S, F, I> {
     }
 }
 
-impl<S, F, I> Edit<usize, I> for LkupVec<S, F, I>
+impl<S, F, I> LkupVec<S, F, I>
 where
     S: Store<Pos = usize>,
     F: Fn(&I) -> S::Key,
-    I: std::fmt::Debug,
 {
-    type Retriever = S;
+    /// Append a new `Item` to the List.
+    pub fn push(&mut self, item: I) -> usize {
+        let idx = self.inner.items.len();
+        self.inner.store.insert((self.field)(&item), idx);
+        self.inner.items.push(item);
+        idx
+    }
 
     /// Update an existing `Item` on given index from the List.
     /// If the index exist, the method returns an `Some` with reference to the updated Item.
     /// If not, the method returns `None`.
-    fn update<U>(&mut self, index: usize, mut update: U) -> Option<&I>
+    pub fn update<U>(&mut self, index: usize, mut update: U) -> Option<&I>
     where
         U: FnMut(&mut I),
     {
@@ -111,7 +107,7 @@ where
     ///
     /// ## Hint:
     /// The remove is a swap_remove ([`std::vec::Vec::swap_remove`]).
-    fn remove(&mut self, index: usize) -> Option<I> {
+    pub fn remove(&mut self, index: usize) -> Option<I> {
         if self.inner.items.is_empty() {
             return None;
         }
@@ -141,11 +137,41 @@ where
         Some(rm_item)
     }
 
-    fn get_indices_by_key<Q>(&self, key: Q) -> &[usize]
+    /// Call `update`-function of all items by a given `Key`.
+    /// Return value is the size of updated Items.
+    pub fn update_by_key<Q, U>(&mut self, key: Q, mut update: U) -> usize
     where
         S: Retriever<Q, Pos = usize>,
+        U: FnMut(&mut I),
     {
-        self.inner.store.pos_by_key(key)
+        let mut update_count = 0;
+
+        #[allow(clippy::unnecessary_to_owned)]
+        for idx in self.store.pos_by_key(key).to_vec() {
+            if self.update(idx, &mut update).is_some() {
+                update_count += 1;
+            }
+        }
+
+        update_count
+    }
+
+    /// Remove all items by a given `Key`.
+    /// Return value is the size of removed Items.
+    pub fn remove_by_key<Q>(&mut self, key: Q) -> usize
+    where
+        S: Retriever<Q, Pos = usize>,
+        Q: Clone,
+    {
+        let mut remove_count = 0;
+
+        while let Some(idx) = self.store.pos_by_key(key.clone()).iter().next() {
+            if self.remove(*idx).is_some() {
+                remove_count += 1;
+            }
+        }
+
+        remove_count
     }
 }
 

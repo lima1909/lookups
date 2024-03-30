@@ -2,18 +2,12 @@
 //!
 
 use crate::{
-    collections::{map::ro, Edit},
+    collections::map::ro,
     lookup::store::{position::KeyPosition, Lookup, Retriever, Store},
 };
 use std::{hash::Hash, ops::Deref};
 
-#[cfg(feature = "hashbrown")]
-type HashMap<K, V> = hashbrown::HashMap<K, V>;
-
-#[cfg(not(feature = "hashbrown"))]
-type HashMap<K, V> = std::collections::HashMap<K, V>;
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LkupHashMap<S, F, K, V> {
     field: F,
     inner: ro::LkupHashMap<S, K, V>,
@@ -28,62 +22,96 @@ where
     where
         L: Lookup<S, P>,
         P: KeyPosition<Pos = K>,
-        F: Clone,
         K: Clone,
     {
         Self {
-            field: field.clone(),
-            inner: ro::LkupHashMap::new(lookup, field, HashMap::new()),
+            inner: ro::LkupHashMap::new(lookup, &field, ro::HashMap::new()),
+            field,
         }
-    }
-
-    pub fn insert(&mut self, key: K, item: V) -> Option<V>
-    where
-        K: Hash + Eq + Clone,
-    {
-        self.inner.0.store.insert((self.field)(&item), key.clone());
-        self.inner.0.items.insert(key, item)
     }
 }
 
 impl<S, F, K, V> Deref for LkupHashMap<S, F, K, V> {
-    type Target = ro::LkupBaseMap<S, HashMap<K, V>>;
+    type Target = ro::LkupHashMap<S, K, V>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<S, F, K, V> Edit<K, V> for LkupHashMap<S, F, K, V>
+impl<S, F, K, V> LkupHashMap<S, F, K, V>
 where
     S: Store<Pos = K>,
     F: Fn(&V) -> S::Key,
     K: Hash + Eq,
 {
-    type Retriever = S;
+    /// Insert a new `Item` to the Map.
+    pub fn insert(&mut self, key: K, item: V) -> Option<V>
+    where
+        K: Hash + Eq + Clone,
+    {
+        self.inner.store.insert((self.field)(&item), key.clone());
+        self.inner.items.insert(key, item)
+    }
 
-    fn update<U>(&mut self, key: K, mut update: U) -> Option<&V>
+    /// Update an existing `Item` on given key from the Map.
+    /// If the key exist, the method returns an `Some` with reference to the updated Item.
+    /// If not, the method returns `None`.
+    pub fn update<U>(&mut self, key: K, mut update: U) -> Option<&V>
     where
         U: FnMut(&mut V),
     {
-        let v = self.inner.0.items.get_mut(&key)?;
+        let v = self.inner.items.get_mut(&key)?;
         let old_key = (self.field)(v);
         update(v);
-        self.inner.0.store.update(old_key, key, (self.field)(v));
+        self.inner.store.update(old_key, key, (self.field)(v));
         Some(v)
     }
 
-    fn remove(&mut self, key: K) -> Option<V> {
-        let removed = self.inner.0.items.remove(&key)?;
-        self.inner.0.store.delete((self.field)(&removed), &key);
+    /// The Item on index in the list will be removed.
+    pub fn remove(&mut self, key: K) -> Option<V> {
+        let removed = self.inner.items.remove(&key)?;
+        self.inner.store.delete((self.field)(&removed), &key);
         Some(removed)
     }
 
-    fn get_indices_by_key<Q>(&self, key: Q) -> &[K]
+    /// Call `update`-function of all items by a given `Key`.
+    /// Return value is the size of updated Items.
+    pub fn update_by_key<Q, U>(&mut self, key: Q, mut update: U) -> usize
     where
-        Self::Retriever: Retriever<Q, Pos = K>,
+        S: Retriever<Q, Pos = K>,
+        U: FnMut(&mut V),
+        K: Clone,
     {
-        self.inner.store.pos_by_key(key)
+        let mut update_count = 0;
+
+        #[allow(clippy::unnecessary_to_owned)]
+        for idx in self.store.pos_by_key(key).to_vec() {
+            if self.update(idx, &mut update).is_some() {
+                update_count += 1;
+            }
+        }
+
+        update_count
+    }
+
+    /// Remove all items by a given `Key`.
+    /// Return value is the size of removed Items.
+    pub fn remove_by_key<Q>(&mut self, key: Q) -> usize
+    where
+        S: Retriever<Q, Pos = K>,
+        Q: Clone,
+        K: Clone,
+    {
+        let mut remove_count = 0;
+
+        while let Some(idx) = self.store.pos_by_key(key.clone()).iter().next() {
+            if self.remove(idx.clone()).is_some() {
+                remove_count += 1;
+            }
+        }
+
+        remove_count
     }
 }
 
@@ -134,10 +162,15 @@ mod tests {
         assert!(!m.lkup().contains_key(1_000));
         assert_eq!(1, m.len());
 
-        // remove by lookup-key
+        // remove by lookup-key NOT found
         assert_eq!(0, m.remove_by_key(2));
         assert_eq!(1, m.len());
 
+        // remove with cancel
+        // assert_eq!(0, m.remove_by_key_with_cancel(99, |c| c.1.eq("Audi")));
+        // assert_eq!(1, m.len());
+
+        // remove by lookup-key
         assert_eq!(1, m.remove_by_key(99));
         assert_eq!(0, m.len());
     }

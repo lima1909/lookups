@@ -38,7 +38,7 @@ use std::ops::{Deref, Index};
 /// );
 /// ```
 ///
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LkupList<S, I> {
     pub(crate) store: S,
     pub(crate) items: I,

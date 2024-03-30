@@ -16,7 +16,7 @@
 //! ## How can I use it?
 //!
 //!```
-//! use lookups::{LkupHashMap, IndexLookup, Lookup, Edit};
+//! use lookups::{LkupHashMap, IndexLookup, Lookup};
 //!
 //! #[derive(PartialEq, Debug)]
 //! struct Car {
@@ -36,11 +36,12 @@
 //! // lookup with Key (id: usize)
 //! assert!(map.lkup().contains_key(2));
 //!
-//! // get a Car by an given: id
-//! assert_eq!(map.lkup().get_by_key(5).next(), Some(&Car{id: 5, name: "Audi".into()}));
-//!
 //! // update entry by lookup-key
 //! assert_eq!(1, map.update_by_key(5, |c| c.name = "Audi-New".into()));
+//!
+//! // get a Car by an given: id
+//! assert_eq!(map.lkup().get_by_key(5).next(), Some(&Car{id: 5, name: "Audi-New".into()}));
+//!
 //!
 //! // create a View: a subset from the Lookups (defined by the given Keys)
 //! let view = map.create_lkup_view([0, 2]);
@@ -60,5 +61,4 @@ pub use collections::map::rw::LkupHashMap;
 pub use lookup::hash::HashLookup;
 pub use lookup::index::IndexLookup;
 
-pub use collections::Edit;
 pub use lookup::store::Lookup;
