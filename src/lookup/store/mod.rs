@@ -75,7 +75,7 @@ pub trait Store {
     fn with_capacity(capacity: usize) -> Self;
 }
 
-/// `Lookup` creates the unique or multi `Key` lookup.
+/// `Lookup` creates an unique or multi `Key` lookup.
 pub trait Lookup<S, P>
 where
     S: Store,
@@ -133,29 +133,29 @@ where
 /// They shows a subset of `Keys` which are saved in the [`crate::lookup::store::Store`].
 pub trait ViewCreator<'a> {
     type Key;
-    type Lookup;
+    type Retriever;
 
     /// Create a `View` by the given `Key`s.
-    fn create_view<It>(&'a self, keys: It) -> View<Self::Lookup>
+    fn create_view<It>(&'a self, keys: It) -> View<Self::Retriever>
     where
         It: IntoIterator<Item = Self::Key>;
 }
 
 /// A wrapper for a `Lookup` implementation
 #[repr(transparent)]
-pub struct View<L>(L);
+pub struct View<R>(R);
 
-impl<L> View<L> {
-    pub fn new(lookup: L) -> Self {
-        Self(lookup)
+impl<R> View<R> {
+    pub fn new(retriever: R) -> Self {
+        Self(retriever)
     }
 }
 
-impl<L, Q> Retriever<Q> for View<L>
+impl<R, Q> Retriever<Q> for View<R>
 where
-    L: Retriever<Q>,
+    R: Retriever<Q>,
 {
-    type Pos = L::Pos;
+    type Pos = R::Pos;
 
     fn key_exist(&self, key: Q) -> bool {
         self.0.key_exist(key)
@@ -166,11 +166,11 @@ where
     }
 }
 
-impl<L> std::ops::Deref for View<L>
+impl<R> std::ops::Deref for View<R>
 where
-    L: std::ops::Deref,
+    R: std::ops::Deref,
 {
-    type Target = L::Target;
+    type Target = R::Target;
 
     fn deref(&self) -> &Self::Target {
         self.0.deref()

@@ -63,9 +63,9 @@ where
     P: KeyPositionAsSlice + 'a,
 {
     type Key = K;
-    type Lookup = IndexStore<K, &'a P>;
+    type Retriever = IndexStore<K, &'a P>;
 
-    fn create_view<It>(&'a self, keys: It) -> View<Self::Lookup>
+    fn create_view<It>(&'a self, keys: It) -> View<Self::Retriever>
     where
         It: IntoIterator<Item = Self::Key>,
     {

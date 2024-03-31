@@ -88,7 +88,7 @@ where
     pub fn create_lkup_view<'a, It>(
         &'a self,
         keys: It,
-    ) -> Retrieve<View<S::Lookup>, MapIndex<'_, HashMap<K, V>>>
+    ) -> Retrieve<View<S::Retriever>, MapIndex<'_, HashMap<K, V>>>
     where
         S: ViewCreator<'a>,
         It: IntoIterator<Item = <S as ViewCreator<'a>>::Key>,
