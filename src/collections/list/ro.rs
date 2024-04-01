@@ -178,6 +178,13 @@ mod tests {
                 .collect::<Vec<_>>()
         );
 
+        // check the Items
+        assert_eq!(
+            vec![&Car(99, "Audi".into())],
+            view.items().collect::<Vec<_>>()
+        );
+
+        // check the extension
         assert_eq!(vec![&String::from("Audi")], view.keys().collect::<Vec<_>>());
     }
 }

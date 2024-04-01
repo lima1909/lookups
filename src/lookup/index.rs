@@ -16,7 +16,7 @@
 //!
 use crate::lookup::store::{
     position::{KeyPosition, KeyPositionAsSlice},
-    Lookup, Retriever, Store, View, ViewCreator,
+    Lookup, Positions, Retriever, Store, View, ViewCreator,
 };
 use std::{marker::PhantomData, ops::Deref};
 
@@ -80,6 +80,20 @@ where
         }
 
         View::new(IndexStore(lkup))
+    }
+}
+
+impl<'a, K, P> Positions<'a> for IndexStore<K, &'a P>
+where
+    P: KeyPositionAsSlice,
+{
+    type Pos = P::Pos;
+
+    fn positions(&'a self) -> impl Iterator<Item = &'a P::Pos> {
+        self.0
+            .iter()
+            .filter_map(|o| o.as_ref().map(|(_, p)| p))
+            .flat_map(|p| p.as_position_slice())
     }
 }
 

@@ -5,7 +5,7 @@
 //!
 use crate::lookup::store::{
     position::{KeyPosition, KeyPositionAsSlice},
-    Lookup, Retriever, Store, View, ViewCreator,
+    Lookup, Positions, Retriever, Store, View, ViewCreator,
 };
 use std::{borrow::Borrow, hash::Hash, marker::PhantomData, ops::Deref};
 
@@ -75,6 +75,17 @@ where
         }
 
         View::new(HashStore(map))
+    }
+}
+
+impl<'a, K, P> Positions<'a> for HashStore<K, &'a P>
+where
+    P: KeyPositionAsSlice,
+{
+    type Pos = P::Pos;
+
+    fn positions(&'a self) -> impl Iterator<Item = &'a P::Pos> {
+        self.0.values().flat_map(|p| p.as_position_slice())
     }
 }
 

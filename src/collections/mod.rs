@@ -4,7 +4,7 @@
 pub mod list;
 pub mod map;
 
-use crate::lookup::store::Retriever;
+use crate::lookup::store::{Positions, Retriever};
 use std::ops::Index;
 
 pub use crate::collections::list::rw::LkupVec;
@@ -27,8 +27,7 @@ impl<R, I> Retrieve<R, I> {
     /// # Example
     ///
     /// ```
-    /// use lookups::{IndexLookup, Lookup};
-    /// use lookups::collections::list::ro::LkupList;
+    /// use lookups::{collections::list::ro::LkupList, IndexLookup, Lookup};
     ///
     /// #[derive(Debug, PartialEq)]
     /// pub struct Car(usize, String);
@@ -52,8 +51,7 @@ impl<R, I> Retrieve<R, I> {
     /// # Example
     ///
     /// ```
-    /// use lookups::{IndexLookup, Lookup};
-    /// use lookups::collections::list::ro::LkupList;
+    /// use lookups::{collections::list::ro::LkupList, IndexLookup, Lookup};
     ///
     /// #[derive(Debug, PartialEq)]
     /// pub struct Car(usize, String);
@@ -82,16 +80,10 @@ impl<R, I> Retrieve<R, I> {
 
     /// Combines all given `keys` with an logical `OR`.
     ///
-    ///```text
-    /// get_by_many_keys([2, 5, 6]) => get_by_key(2) OR get_by_key(5) OR get_by_key(6)
-    /// get_by_many_keys(2..6]) => get_by_key(2) OR get_by_key(3) OR get_by_key(4) OR get_by_key(5)
-    /// ```
-    ///
     /// # Example:
     ///
     /// ```
-    /// use lookups::{IndexLookup, Lookup};
-    /// use lookups::collections::list::ro::LkupList;
+    /// use lookups::{collections::list::ro::LkupList, IndexLookup, Lookup};
     ///
     /// #[derive(Debug, PartialEq)]
     /// pub struct Car(usize, String);
@@ -119,6 +111,35 @@ impl<R, I> Retrieve<R, I> {
         self.retriever
             .pos_by_many_keys(keys)
             .map(|p| &self.items[p])
+    }
+
+    /// Return all items for the given `Retriever`.
+    ///
+    /// # Example:
+    ///
+    /// ```
+    /// use lookups::{collections::list::ro::LkupList, IndexLookup, Lookup};
+    ///
+    /// #[derive(Debug, PartialEq)]
+    /// pub struct Car(usize, String);
+    ///
+    /// impl Car {
+    ///     fn id(&self) -> usize { self.0 }
+    /// }
+    ///
+    /// let cars = [Car(5, "BMW".into()), Car(1, "Audi".into())];
+    ///
+    /// let v = LkupList::new(IndexLookup::with_multi_keys(), Car::id, cars);
+    /// let view = v.create_lkup_view([5]);
+    ///
+    /// assert_eq!(vec![&Car(5, "BMW".into())], view.items().collect::<Vec<_>>());
+    /// ```
+    pub fn items<'a>(&'a self) -> impl Iterator<Item = &'a I::Output>
+    where
+        I: Index<&'a R::Pos>,
+        R: Positions<'a>,
+    {
+        self.retriever.positions().map(|p| &self.items[p])
     }
 }
 

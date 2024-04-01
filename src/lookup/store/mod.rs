@@ -21,15 +21,12 @@ pub trait Retriever<Q> {
     ///
     /// Hint: If the input list contains a `Key` more than ones, than containts the result list
     /// the positions also more than ones.
-    fn pos_by_many_keys<'k, K>(
-        &'k self,
-        keys: K,
-    ) -> Positions<'k, Self, Q, <K as IntoIterator>::IntoIter>
+    fn pos_by_many_keys<'a, K>(&'a self, keys: K) -> impl Iterator<Item = &'a Self::Pos>
     where
-        K: IntoIterator<Item = Q> + 'k,
-        Self: Sized,
+        K: IntoIterator<Item = Q>,
+        Self::Pos: 'a,
     {
-        Positions::new(self, keys.into_iter())
+        keys.into_iter().flat_map(|q| self.pos_by_key(q))
     }
 }
 
@@ -46,6 +43,14 @@ where
     fn pos_by_key(&self, key: Q) -> &[Self::Pos] {
         (*self).pos_by_key(key)
     }
+}
+
+/// `Positions` create an `Iterator` for all saved positions.
+pub trait Positions<'a> {
+    type Pos;
+
+    /// Returns all knwon positions as an iterator.
+    fn positions(&'a self) -> impl Iterator<Item = &'a Self::Pos>;
 }
 
 /// Store is an container which the mapping between the `Key`s and they `Position`s stored.
@@ -82,6 +87,15 @@ where
     P: KeyPosition,
 {
     fn new() -> Self;
+
+    // Create an `Lookup` for a given `KeyPosition` implementation.
+    fn with_key<K>() -> Self
+    where
+        K: KeyPosition,
+        Self: Lookup<S, K> + Sized,
+    {
+        Lookup::<S, K>::new()
+    }
 
     // Create an `Lookup` for an unique `Key`.
     fn with_unique_key() -> Self
@@ -166,6 +180,20 @@ where
     }
 }
 
+impl<'a, P> Positions<'a> for View<P>
+where
+    P: Positions<'a>,
+{
+    type Pos = P::Pos;
+
+    fn positions(&'a self) -> impl Iterator<Item = &'a Self::Pos>
+    where
+        Self::Pos: 'a,
+    {
+        self.0.positions()
+    }
+}
+
 impl<R> std::ops::Deref for View<R>
 where
     R: std::ops::Deref,
@@ -174,56 +202,6 @@ where
 
     fn deref(&self) -> &Self::Target {
         self.0.deref()
-    }
-}
-
-/// `Positions` is an `Iterator` for the result from [`Retriever::pos_by_many_keys()`].
-pub struct Positions<'a, L: Retriever<Q>, Q, Keys> {
-    retriever: &'a L,
-    keys: Keys,
-    pos_iter: std::slice::Iter<'a, L::Pos>,
-}
-
-impl<'a, L, Q, Keys> Positions<'a, L, Q, Keys>
-where
-    L: Retriever<Q>,
-    Keys: Iterator<Item = Q> + 'a,
-{
-    pub(crate) fn new(retriever: &'a L, mut keys: Keys) -> Self {
-        let pos_iter = match keys.next() {
-            Some(k) => retriever.pos_by_key(k).iter(),
-            None => [].iter(),
-        };
-
-        Self {
-            retriever,
-            keys,
-            pos_iter,
-        }
-    }
-}
-
-impl<'a, L, Q, Keys> Iterator for Positions<'a, L, Q, Keys>
-where
-    L: Retriever<Q> + 'a,
-    Keys: Iterator<Item = Q> + 'a,
-    Self: 'a,
-{
-    type Item = &'a L::Pos;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(idx) = self.pos_iter.next() {
-            return Some(idx);
-        }
-
-        loop {
-            let next_key = self.keys.next()?;
-            let next_pos = self.retriever.pos_by_key(next_key);
-            if !next_pos.is_empty() {
-                self.pos_iter = next_pos.iter();
-                return self.pos_iter.next();
-            }
-        }
     }
 }
 
