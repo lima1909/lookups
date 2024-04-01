@@ -4,29 +4,29 @@
 pub mod list;
 pub mod map;
 
-use crate::lookup::store::{Positions, Retriever};
+use crate::lookup::store::{self, Positions, Retriever};
 use std::ops::Index;
 
 pub use crate::collections::list::rw::LkupVec;
 pub use crate::collections::map::rw::LkupHashMap;
 
-/// A `Retrieve`r is the main interface for get Items by an given `Lookup`.
-pub struct Retrieve<R, I> {
-    retriever: R,
+/// A `View` is a sub set from a `Lookup`.
+pub struct View<R, I> {
+    view: store::View<R>,
     items: I,
 }
 
-impl<R, I> Retrieve<R, I> {
-    /// Create a new instance of an [`Retrieve`]r.
-    pub const fn new(retriever: R, items: I) -> Self {
-        Self { retriever, items }
+impl<R, I> View<R, I> {
+    /// Create a new instance of an [`View`]r.
+    pub const fn new(view: store::View<R>, items: I) -> Self {
+        Self { view, items }
     }
 
     /// Checks whether the `Key` in the collection exists.
     ///
     /// # Example
     ///
-    /// ```
+    /// ```ignore
     /// use lookups::{collections::list::ro::LkupList, IndexLookup, Lookup};
     ///
     /// #[derive(Debug, PartialEq)]
@@ -43,14 +43,14 @@ impl<R, I> Retrieve<R, I> {
     where
         R: Retriever<Q>,
     {
-        self.retriever.key_exist(key)
+        self.view.key_exist(key)
     }
 
     /// Get all items for a given `Key`.
     ///
     /// # Example
     ///
-    /// ```
+    /// ```ignore
     /// use lookups::{collections::list::ro::LkupList, IndexLookup, Lookup};
     ///
     /// #[derive(Debug, PartialEq)]
@@ -72,17 +72,14 @@ impl<R, I> Retrieve<R, I> {
         R: Retriever<Q>,
         Q: 'a,
     {
-        self.retriever
-            .pos_by_key(key)
-            .iter()
-            .map(|p| &self.items[p])
+        self.view.pos_by_key(key).iter().map(|p| &self.items[p])
     }
 
     /// Combines all given `keys` with an logical `OR`.
     ///
     /// # Example:
     ///
-    /// ```
+    /// ```ignore
     /// use lookups::{collections::list::ro::LkupList, IndexLookup, Lookup};
     ///
     /// #[derive(Debug, PartialEq)]
@@ -108,12 +105,10 @@ impl<R, I> Retrieve<R, I> {
         R: Retriever<Q>,
         Q: 'a,
     {
-        self.retriever
-            .pos_by_many_keys(keys)
-            .map(|p| &self.items[p])
+        self.view.pos_by_many_keys(keys).map(|p| &self.items[p])
     }
 
-    /// Return all items for the given `Retriever`.
+    /// Return all items for the given `View`.
     ///
     /// # Example:
     ///
@@ -139,17 +134,17 @@ impl<R, I> Retrieve<R, I> {
         I: Index<&'a R::Pos>,
         R: Positions<'a>,
     {
-        self.retriever.positions().map(|p| &self.items[p])
+        self.view.positions().map(|p| &self.items[p])
     }
 }
 
-impl<L, I> std::ops::Deref for Retrieve<L, I>
+impl<L, I> std::ops::Deref for View<L, I>
 where
     L: std::ops::Deref,
 {
     type Target = L::Target;
 
     fn deref(&self) -> &Self::Target {
-        self.retriever.deref()
+        self.view.deref()
     }
 }

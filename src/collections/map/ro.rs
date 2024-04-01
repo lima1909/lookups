@@ -1,8 +1,8 @@
 //! `Read only` implementations for lookup collections `LkupMap` like `HashMap`, `BTreeMap`
 //!
 
-use crate::collections::{map::MapIndex, Retrieve};
-use crate::lookup::store::{position::KeyPosition, Lookup, Store, View, ViewCreator};
+use crate::collections::{map::MapIndex, View};
+use crate::lookup::store::{position::KeyPosition, Lookup, Retriever, Store, ViewCreator};
 use std::{hash::Hash, ops::Deref};
 
 /// [`LkupMap`] is a read only `HashMap` which is extended by a given `Lookup` implementation.
@@ -27,18 +27,18 @@ use std::{hash::Hash, ops::Deref};
 /// let map = LkupHashMap::from_iter(IndexLookup::with_unique_key(), |p| p.id, persons);
 ///
 /// assert!(map.contains_key("Paul"));     // conventionally HashMap access with String - Key
-/// assert!(map.lkup().contains_key(2)); // lookup with usize - Key
+/// assert!(map.contains_lkup_key(2)); // lookup with usize - Key
 ///
 /// assert_eq!(
 ///     &Person{id: 5, name:  "Mario".into()},
 ///     // get a Person by an given Key
-///     map.lkup().get_by_key(5).next().unwrap()
+///     map.get_by_lkup_key(5).next().unwrap()
 /// );
 ///
 /// assert_eq!(
 ///     vec![&Person{id: 0, name:  "Paul".into()}, &Person{id: 2, name:  "Jasmin".into()}],
 ///     // get many Persons by given many Keys
-///     map.lkup().get_by_many_keys([0, 2]).collect::<Vec<_>>(),
+///     map.get_by_many_lkup_keys([0, 2]).collect::<Vec<_>>(),
 /// );
 /// ```
 ///
@@ -81,20 +81,48 @@ where
         Self::new(lookup, field, HashMap::from_iter(iter))
     }
 
-    pub fn lkup(&self) -> Retrieve<&S, MapIndex<'_, HashMap<K, V>>> {
-        Retrieve::new(&self.store, MapIndex(&self.items))
+    pub fn contains_lkup_key<Q>(&self, key: Q) -> bool
+    where
+        S: Retriever<Q>,
+        K: Hash + Eq,
+    {
+        self.store.key_exist(key)
+    }
+
+    pub fn get_by_lkup_key<Q>(&self, key: Q) -> impl Iterator<Item = &V>
+    where
+        S: Retriever<Q, Pos = K>,
+        K: Hash + Eq,
+    {
+        self.store.pos_by_key(key).iter().map(|p| &self.items[p])
+    }
+
+    pub fn get_by_many_lkup_keys<It, Q>(&self, keys: It) -> impl Iterator<Item = &V>
+    where
+        S: Retriever<Q, Pos = K>,
+        K: Hash + Eq,
+        It: IntoIterator<Item = Q>,
+    {
+        self.store.pos_by_many_keys(keys).map(|p| &self.items[p])
+    }
+
+    pub fn lkup_ext(&self) -> &S::Target
+    where
+        S: Deref,
+    {
+        self.store.deref()
     }
 
     pub fn create_lkup_view<'a, It>(
         &'a self,
         keys: It,
-    ) -> Retrieve<View<S::Retriever>, MapIndex<'_, HashMap<K, V>>>
+    ) -> View<S::Retriever, MapIndex<'_, HashMap<K, V>>>
     where
         S: ViewCreator<'a>,
         It: IntoIterator<Item = <S as ViewCreator<'a>>::Key>,
     {
         let view = self.store.create_view(keys);
-        Retrieve::new(view, MapIndex(&self.items))
+        View::new(view, MapIndex(&self.items))
     }
 }
 
@@ -123,11 +151,11 @@ mod tests {
 
         assert!(m.contains_key("BMW"));
 
-        assert!(m.lkup().contains_key(1));
-        assert!(!m.lkup().contains_key(1_000));
+        assert!(m.contains_lkup_key(1));
+        assert!(!m.contains_lkup_key(1_000));
 
-        m.lkup()
+        m.lkup_ext()
             .keys()
-            .for_each(|key| assert!(m.lkup().contains_key(key)));
+            .for_each(|key| assert!(m.contains_lkup_key(key)));
     }
 }

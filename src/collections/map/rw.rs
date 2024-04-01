@@ -131,19 +131,19 @@ mod tests {
 
         assert!(m.contains_key("BMW"));
 
-        assert!(m.lkup().contains_key(1));
-        assert!(!m.lkup().contains_key(1_000));
+        assert!(m.contains_lkup_key(1));
+        assert!(!m.contains_lkup_key(1_000));
 
-        m.lkup()
+        m.lkup_ext()
             .keys()
-            .for_each(|key| assert!(m.lkup().contains_key(key)));
+            .for_each(|key| assert!(m.contains_lkup_key(key)));
 
         // update
         assert_eq!(
             Some(&Car(1_000, String::from("BMW"))),
             m.update(String::from("BMW"), |c| c.0 = 1_000)
         );
-        assert!(m.lkup().contains_key(1_000));
+        assert!(m.contains_lkup_key(1_000));
 
         assert_eq!(None, m.update("NotFound".into(), |_c| {}));
 
@@ -159,7 +159,7 @@ mod tests {
             m.remove("BMW".into())
         );
         assert!(!m.contains_key("BMW"));
-        assert!(!m.lkup().contains_key(1_000));
+        assert!(!m.contains_lkup_key(1_000));
         assert_eq!(1, m.len());
 
         // remove by lookup-key NOT found
@@ -183,19 +183,19 @@ mod tests {
 
         assert!(m.contains_key(&1));
 
-        assert!(m.lkup().contains_key("BMW"));
-        assert!(!m.lkup().contains_key("NOT FOUND"));
+        assert!(m.contains_lkup_key("BMW"));
+        assert!(!m.contains_lkup_key("NOT FOUND"));
 
-        m.lkup()
+        m.lkup_ext()
             .keys()
-            .for_each(|key| assert!(m.lkup().contains_key(key)));
+            .for_each(|key| assert!(m.contains_lkup_key(key)));
 
         // update
         assert_eq!(
             Some(&Car(1, String::from("VW"))),
             m.update(1, |c| c.1 = String::from("VW"))
         );
-        assert!(m.lkup().contains_key("VW"));
+        assert!(m.contains_lkup_key("VW"));
 
         assert_eq!(None, m.update(1_000, |_c| {}));
 
@@ -203,7 +203,7 @@ mod tests {
         assert_eq!(2, m.len());
         assert_eq!(Some(Car(1, String::from("VW"))), m.remove(1));
         assert!(!m.contains_key(&1));
-        assert!(!m.lkup().contains_key("VW"));
+        assert!(!m.contains_lkup_key("VW"));
         assert_eq!(1, m.len());
     }
 }

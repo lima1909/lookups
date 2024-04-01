@@ -26,18 +26,18 @@ use std::{fmt::Debug, ops::Deref};
 /// vec.push(Person{id: 5, name: "Mario".into()});
 /// vec.push(Person{id: 2, name: "Jasmin".into()});
 ///
-/// assert!(vec.lkup().contains_key("Paul")); // lookup with a given Key
+/// assert!(vec.contains_lkup_key("Paul")); // lookup with a given Key
 ///
 /// assert_eq!(
 ///     &Person{id: 5, name:  "Mario".into()},
 ///     // get a Person by an given Key: "Mario"
-///     vec.lkup().get_by_key("Mario").next().unwrap()
+///     vec.get_by_lkup_key("Mario").next().unwrap()
 /// );
 ///
 /// assert_eq!(
 ///     vec![&Person{id: 0, name:  "Paul".into()}, &Person{id: 2, name:  "Jasmin".into()}],
 ///     // get many a Person by an many given Key
-///     vec.lkup().get_by_many_keys(["Paul", "Jasmin"]).collect::<Vec<_>>(),
+///     vec.get_by_many_lkup_keys(["Paul", "Jasmin"]).collect::<Vec<_>>(),
 /// );
 /// ```
 ///
@@ -215,7 +215,7 @@ mod tests {
 
         assert_eq!(
             &Person::new(1, "Anna"),
-            v.lkup().get_by_key("Anna").next().unwrap()
+            v.get_by_lkup_key("Anna").next().unwrap()
         );
 
         // id 101 not exist
@@ -226,7 +226,7 @@ mod tests {
         );
         assert_eq!(
             &Person::new(99, "Anna"),
-            v.lkup().get_by_key("Anna").next().unwrap()
+            v.get_by_lkup_key("Anna").next().unwrap()
         );
 
         let view = v.create_lkup_view([String::from("Paul")]);
@@ -272,8 +272,8 @@ mod tests {
         v.remove_by_key(&1);
         assert_eq!(1, v.len());
 
-        assert!(!v.lkup().contains_key(&1));
-        assert!(v.lkup().contains_key(&2));
+        assert!(!v.contains_lkup_key(&1));
+        assert!(v.contains_lkup_key(&2));
 
         v.remove_by_key(&2);
         assert_eq!(0, v.len());

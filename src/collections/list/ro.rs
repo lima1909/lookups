@@ -1,7 +1,7 @@
 //! `Read only` implementations for lookup collections [`LkupList`] like `Vec`, `Slice`, ...
 //!
-use crate::collections::{list::ListIndex, Retrieve};
-use crate::lookup::store::{position::KeyPosition, Lookup, Store, View, ViewCreator};
+use crate::collections::{list::ListIndex, View};
+use crate::lookup::store::{position::KeyPosition, Lookup, Retriever, Store, ViewCreator};
 use std::ops::{Deref, Index};
 
 /// [`LkupList`] is a read only lookup extenstion for a [`std::vec::Vec`].
@@ -23,18 +23,18 @@ use std::ops::{Deref, Index};
 ///
 /// let vec = LkupList::new(HashLookup::with_unique_key(), |p| p.name.clone(), data);
 ///
-/// assert!(vec.lkup().contains_key("Paul")); // lookup with a given Key
+/// assert!(vec.contains_lkup_key("Paul")); // lookup with a given Key
 ///
 /// assert_eq!(
 ///     &Person{id: 5, name:  "Mario".into()},
 ///     // get a Person by an given Key: "Mario"
-///     vec.lkup().get_by_key("Mario").next().unwrap()
+///     vec.get_by_lkup_key("Mario").next().unwrap()
 /// );
 ///
 /// assert_eq!(
 ///     vec![&Person{id: 0, name:  "Paul".into()}, &Person{id: 2, name:  "Jasmin".into()}],
 ///     // get many a Person by an many given Key
-///     vec.lkup().get_by_many_keys(["Paul", "Jasmin"]).collect::<Vec<_>>(),
+///     vec.get_by_many_lkup_keys(["Paul", "Jasmin"]).collect::<Vec<_>>(),
 /// );
 /// ```
 ///
@@ -59,20 +59,44 @@ where
         Self { store, items }
     }
 
-    pub fn lkup(&self) -> Retrieve<&S, ListIndex<'_, I>> {
-        Retrieve::new(&self.store, ListIndex(&self.items))
+    pub fn contains_lkup_key<Q>(&self, key: Q) -> bool
+    where
+        S: Retriever<Q>,
+    {
+        self.store.key_exist(key)
     }
 
-    pub fn create_lkup_view<'a, It>(
-        &'a self,
-        keys: It,
-    ) -> Retrieve<View<S::Retriever>, ListIndex<'a, I>>
+    pub fn get_by_lkup_key<Q>(&self, key: Q) -> impl Iterator<Item = &I::Output>
+    where
+        S: Retriever<Q, Pos = usize>,
+        I: Index<usize>,
+    {
+        self.store.pos_by_key(key).iter().map(|p| &self.items[*p])
+    }
+
+    pub fn get_by_many_lkup_keys<It, Q>(&self, keys: It) -> impl Iterator<Item = &I::Output>
+    where
+        S: Retriever<Q, Pos = usize>,
+        I: Index<usize>,
+        It: IntoIterator<Item = Q>,
+    {
+        self.store.pos_by_many_keys(keys).map(|p| &self.items[*p])
+    }
+
+    pub fn lkup_ext(&self) -> &S::Target
+    where
+        S: Deref,
+    {
+        self.store.deref()
+    }
+
+    pub fn create_lkup_view<'a, It>(&'a self, keys: It) -> View<S::Retriever, ListIndex<'a, I>>
     where
         It: IntoIterator<Item = <S as ViewCreator<'a>>::Key>,
         S: ViewCreator<'a>,
     {
         let view = self.store.create_view(keys);
-        Retrieve::new(view, ListIndex(&self.items))
+        View::new(view, ListIndex(&self.items))
     }
 }
 
@@ -109,29 +133,29 @@ mod tests {
 
         assert_eq!(2, v.len());
 
-        assert!(v.lkup().contains_key(1));
-        assert!(v.lkup().contains_key(99));
-        assert!(!v.lkup().contains_key(1_000));
+        assert!(v.contains_lkup_key(1));
+        assert!(v.contains_lkup_key(99));
+        assert!(!v.contains_lkup_key(1_000));
 
         assert_eq!(
             vec![&Car(1, "BMW".into())],
-            v.lkup().get_by_key(1).collect::<Vec<_>>()
+            v.get_by_lkup_key(1).collect::<Vec<_>>()
         );
         assert_eq!(
             vec![&Car(99, "Audi".into())],
-            v.lkup().get_by_key(99).collect::<Vec<_>>()
+            v.get_by_lkup_key(99).collect::<Vec<_>>()
         );
-        assert!(v.lkup().get_by_key(98).next().is_none());
+        assert!(v.get_by_lkup_key(98).next().is_none());
 
         assert_eq!(
             vec![&Car(1, "BMW".into()), &Car(99, "Audi".into())],
-            v.lkup().get_by_many_keys([1, 99]).collect::<Vec<_>>()
+            v.get_by_many_lkup_keys([1, 99]).collect::<Vec<_>>()
         );
 
-        assert_eq!(1, v.lkup().min_key().unwrap());
-        assert_eq!(99, v.lkup().max_key().unwrap());
+        assert_eq!(1, v.lkup_ext().min_key().unwrap());
+        assert_eq!(99, v.lkup_ext().max_key().unwrap());
 
-        assert_eq!(vec![1, 99], v.lkup().keys().collect::<Vec<_>>());
+        assert_eq!(vec![1, 99], v.lkup_ext().keys().collect::<Vec<_>>());
     }
 
     #[test]
@@ -139,23 +163,21 @@ mod tests {
         let items = vec![Car(99, "Audi".into()), Car(0, "BMW".into())];
         let v = LkupList::new(HashLookup::with_unique_key(), Car::name, items);
 
-        assert!(v.lkup().contains_key("Audi"));
-        assert!(!v.lkup().contains_key("VW"));
+        assert!(v.contains_lkup_key("Audi"));
+        assert!(!v.contains_lkup_key("VW"));
 
         assert_eq!(
             vec![&Car(0, "BMW".into())],
-            v.lkup().get_by_key("BMW").collect::<Vec<_>>()
+            v.get_by_lkup_key("BMW").collect::<Vec<_>>()
         );
 
         assert_eq!(
             vec![&Car(99, "Audi".into()), &Car(0, "BMW".into())],
-            v.lkup()
-                .get_by_many_keys(["Audi", "BMW"])
-                .collect::<Vec<_>>()
+            v.get_by_many_lkup_keys(["Audi", "BMW"]).collect::<Vec<_>>()
         );
 
         let keys = v
-            .lkup()
+            .lkup_ext()
             .keys()
             .cloned()
             .collect::<std::collections::HashSet<_>>();
