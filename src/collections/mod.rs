@@ -26,7 +26,7 @@ impl<R, I> View<R, I> {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```
     /// use lookups::{collections::list::ro::LkupList, IndexLookup, Lookup};
     ///
     /// #[derive(Debug, PartialEq)]
@@ -35,9 +35,10 @@ impl<R, I> View<R, I> {
     /// let cars = [Car(5, "BMW".into()), Car(1, "Audi".into())];
     ///
     /// let v = LkupList::new(IndexLookup::with_multi_keys(), |c| c.0, cars);
+    /// let view = v.create_lkup_view([1]);
     ///
-    /// assert!(v.lkup().contains_key(1));
-    /// assert!(!v.lkup().contains_key(99));
+    /// assert!(view.contains_key(1));
+    /// assert!(!view.contains_key(5));
     /// ```
     pub fn contains_key<Q>(&self, key: Q) -> bool
     where
@@ -50,7 +51,7 @@ impl<R, I> View<R, I> {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```
     /// use lookups::{collections::list::ro::LkupList, IndexLookup, Lookup};
     ///
     /// #[derive(Debug, PartialEq)]
@@ -63,8 +64,9 @@ impl<R, I> View<R, I> {
     /// let cars = [Car(5, "BMW".into()), Car(1, "Audi".into())];
     ///
     /// let v = LkupList::new(IndexLookup::with_multi_keys(), Car::id, cars);
+    /// let view = v.create_lkup_view([1]);
     ///
-    /// assert_eq!(vec![&Car(1, "Audi".into())], v.lkup().get_by_key(1).collect::<Vec<_>>());
+    /// assert_eq!(vec![&Car(1, "Audi".into())], view.get_by_key(1).collect::<Vec<_>>());
     /// ```
     pub fn get_by_key<'a, Q>(&'a self, key: Q) -> impl Iterator<Item = &'a I::Output>
     where
@@ -79,7 +81,7 @@ impl<R, I> View<R, I> {
     ///
     /// # Example:
     ///
-    /// ```ignore
+    /// ```
     /// use lookups::{collections::list::ro::LkupList, IndexLookup, Lookup};
     ///
     /// #[derive(Debug, PartialEq)]
@@ -89,13 +91,14 @@ impl<R, I> View<R, I> {
     ///     fn id(&self) -> usize { self.0 }
     /// }
     ///
-    /// let cars = [Car(5, "BMW".into()), Car(1, "Audi".into())];
+    /// let cars = [Car(5, "BMW".into()), Car(1, "Audi".into()), Car(3, "VW".into())];
     ///
     /// let v = LkupList::new(IndexLookup::with_multi_keys(), Car::id, cars);
+    /// let view = v.create_lkup_view([1, 5]);
     ///
     /// assert_eq!(
     ///     vec![&Car(5, "BMW".into()), &Car(1, "Audi".into())],
-    ///     v.lkup().get_by_many_keys([5, 1]).collect::<Vec<_>>()
+    ///     view.get_by_many_keys([5, 1]).collect::<Vec<_>>()
     /// );
     /// ```
     pub fn get_by_many_keys<'a, It, Q>(&'a self, keys: It) -> impl Iterator<Item = &'a I::Output>
