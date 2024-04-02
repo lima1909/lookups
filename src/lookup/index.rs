@@ -83,13 +83,13 @@ where
     }
 }
 
-impl<'a, K, P> Positions<'a> for IndexStore<K, &'a P>
+impl<'a, K, P> Positions for IndexStore<K, &'a P>
 where
     P: KeyPositionAsSlice,
 {
     type Pos = P::Pos;
 
-    fn positions(&'a self) -> impl Iterator<Item = &'a P::Pos> {
+    fn positions(&self) -> impl Iterator<Item = &'_ P::Pos> {
         self.0
             .iter()
             .filter_map(|o| o.as_ref().map(|(_, p)| p))

@@ -78,13 +78,13 @@ where
     }
 }
 
-impl<'a, K, P> Positions<'a> for HashStore<K, &'a P>
+impl<'a, K, P> Positions for HashStore<K, &'a P>
 where
     P: KeyPositionAsSlice,
 {
     type Pos = P::Pos;
 
-    fn positions(&'a self) -> impl Iterator<Item = &'a P::Pos> {
+    fn positions(&self) -> impl Iterator<Item = &'_ P::Pos> {
         self.0.values().flat_map(|p| p.as_position_slice())
     }
 }

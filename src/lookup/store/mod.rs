@@ -46,11 +46,11 @@ where
 }
 
 /// `Positions` create an `Iterator` for all saved positions.
-pub trait Positions<'a> {
+pub trait Positions {
     type Pos;
 
     /// Returns all knwon positions as an iterator.
-    fn positions(&'a self) -> impl Iterator<Item = &'a Self::Pos>;
+    fn positions(&self) -> impl Iterator<Item = &'_ Self::Pos>;
 }
 
 /// Store is an container which the mapping between the `Key`s and they `Position`s stored.
@@ -180,16 +180,13 @@ where
     }
 }
 
-impl<'a, P> Positions<'a> for View<P>
+impl<P> Positions for View<P>
 where
-    P: Positions<'a>,
+    P: Positions,
 {
     type Pos = P::Pos;
 
-    fn positions(&'a self) -> impl Iterator<Item = &'a Self::Pos>
-    where
-        Self::Pos: 'a,
-    {
+    fn positions(&self) -> impl Iterator<Item = &'_ Self::Pos> {
         self.0.positions()
     }
 }

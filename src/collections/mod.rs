@@ -132,7 +132,7 @@ impl<R, I> View<R, I> {
     pub fn items<'a>(&'a self) -> impl Iterator<Item = &'a I::Output>
     where
         I: Index<&'a R::Pos>,
-        R: Positions<'a>,
+        R: Positions,
     {
         self.view.positions().map(|p| &self.items[p])
     }
