@@ -100,7 +100,7 @@ where
     }
 }
 
-impl<S, I: Index<usize>> Deref for LkupList<S, I> {
+impl<S, I> Deref for LkupList<S, I> {
     type Target = I;
 
     fn deref(&self) -> &Self::Target {
@@ -111,7 +111,7 @@ impl<S, I: Index<usize>> Deref for LkupList<S, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lookup::{hash::HashLookup, index::IndexLookup};
+    use crate::lookup::{hash::HashLookup, index::IndexLookup, store::position::UniqueKeyPosition};
 
     #[derive(Debug, PartialEq)]
     struct Car(u16, String);
@@ -208,5 +208,18 @@ mod tests {
 
         // check the extension
         assert_eq!(vec![&String::from("Audi")], view.keys().collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn lkuplist_with_key() {
+        let items = [Car(99, "Audi".into()), Car(1, "BMW".into())];
+        let v = LkupList::new(
+            IndexLookup::with_key::<UniqueKeyPosition<usize>>(),
+            Car::id,
+            items,
+        );
+
+        assert!(v.contains_lkup_key(99));
+        assert_eq!(&Car(99, "Audi".into()), &v[0]);
     }
 }

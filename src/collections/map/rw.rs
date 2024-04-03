@@ -186,6 +186,8 @@ mod tests {
         assert!(m.contains_lkup_key("BMW"));
         assert!(!m.contains_lkup_key("NOT FOUND"));
 
+        assert_eq!(&Car(99, "Audi".into()), &m[&99]);
+
         m.lkup_ext()
             .keys()
             .for_each(|key| assert!(m.contains_lkup_key(key)));

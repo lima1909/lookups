@@ -213,6 +213,8 @@ mod tests {
         assert!(!v.is_empty());
         assert_eq!(2, v.len());
 
+        assert_eq!(&Person::new(1, "Anna"), &v[0]);
+
         assert_eq!(
             &Person::new(1, "Anna"),
             v.get_by_lkup_key("Anna").next().unwrap()

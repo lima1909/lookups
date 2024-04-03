@@ -24,7 +24,8 @@
 //!     name: String,
 //! }
 //!
-//! // create a new Lookup HashMap with a unique lookup `Key`: `Car::id` (usize)
+//! // create a new Lookup HashMap with a Index-lookup
+//! // that only supported unique `Key`s: `Car::id` (usize)
 //! let mut map = LkupHashMap::new(IndexLookup::with_unique_key() ,|c: &Car| c.id);
 //!
 //! map.insert(String::from("BMW"),  Car{id: 0, name: "BMW".into()});
