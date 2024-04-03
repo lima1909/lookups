@@ -113,7 +113,7 @@ mod tests {
     use super::*;
     use crate::lookup::{hash::HashLookup, index::IndexLookup, store::position::UniqueKeyPosition};
 
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, Clone)]
     struct Car(u16, String);
 
     impl Car {
@@ -211,7 +211,7 @@ mod tests {
     }
 
     #[test]
-    fn lkuplist_with_key() {
+    fn lkuplist_with_key_and_clone() {
         let items = [Car(99, "Audi".into()), Car(1, "BMW".into())];
         let v = LkupList::new(
             IndexLookup::with_key::<UniqueKeyPosition<usize>>(),
@@ -220,6 +220,14 @@ mod tests {
         );
 
         assert!(v.contains_lkup_key(99));
-        assert_eq!(&Car(99, "Audi".into()), &v[0]);
+        assert_eq!(&Car(1, "BMW".into()), &v[1]);
+
+        let v2 = v.clone();
+        assert!(v2.contains_lkup_key(99));
+        assert_eq!(&Car(1, "BMW".into()), &v2[1]);
+        assert_eq!(
+            vec![&Car(99, "Audi".into()), &Car(1, "BMW".into())],
+            v.get_by_many_lkup_keys([99, 1]).collect::<Vec<_>>()
+        );
     }
 }

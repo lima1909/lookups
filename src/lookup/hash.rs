@@ -30,7 +30,7 @@ where
 
 /// `HashStore` is an implementation for an hash index.
 ///
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(transparent)]
 pub struct HashStore<K, P>(HashMap<K, P>);
 

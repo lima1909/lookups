@@ -34,7 +34,7 @@ where
 }
 
 /// `Key` is from type [`usize`] and the information are saved in a List (Store).
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(transparent)]
 pub struct IndexStore<K, P>(Vec<Option<(K, P)>>);
 

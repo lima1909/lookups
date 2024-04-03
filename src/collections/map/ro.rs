@@ -139,11 +139,11 @@ mod tests {
     use super::*;
     use crate::IndexLookup;
 
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, Clone)]
     struct Car(u16, String);
 
     #[test]
-    fn map_u16() {
+    fn map_u16_and_clone() {
         let mut items = HashMap::new();
         items.insert(String::from("Audi"), Car(99, "Audi".into()));
         items.insert("BMW".into(), Car(1, "BMW".into()));
@@ -159,5 +159,13 @@ mod tests {
             .for_each(|key| assert!(m.contains_lkup_key(key)));
 
         assert_eq!(&Car(99, "Audi".into()), &m["Audi"]);
+
+        let m2 = m.clone();
+        assert!(m2.contains_lkup_key(1));
+        assert_eq!(&Car(1, "BMW".into()), &m2["BMW"]);
+        assert_eq!(
+            vec![&Car(99, "Audi".into()), &Car(1, "BMW".into())],
+            m2.get_by_many_lkup_keys([99, 1]).collect::<Vec<_>>()
+        );
     }
 }
